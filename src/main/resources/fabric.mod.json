@@ -19,12 +19,9 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "xyz.coolsa.biospheres.Biospheres"
+      "xyz.coolsa.biosphere.Biospheres"
     ]
   },
-  "mixins": [
-    "modid.mixins.json"
-  ],
 
   "depends": {
     "fabricloader": ">=0.7.4",

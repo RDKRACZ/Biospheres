@@ -1,9 +1,12 @@
-package net.fabricmc.example;
+package xyz.coolsa.biosphere;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.kinds.App;
 import com.mojang.serialization.Codec;
@@ -11,20 +14,26 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.fabricmc.fabric.api.biomes.v1.OverworldBiomes;
 import net.fabricmc.fabric.impl.biome.InternalBiomeData;
+import net.minecraft.util.Identifier;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.Biomes;
 import net.minecraft.world.biome.layer.BiomeLayers;
 import net.minecraft.world.biome.source.BiomeLayerSampler;
 import net.minecraft.world.biome.source.BiomeSource;
+import net.minecraft.world.biome.source.MultiNoiseBiomeSource;
 
-public class GlobeBiomeSource extends BiomeSource {
+public class BiospheresBiomeSource extends BiomeSource {
 
+	public static final Codec<BiospheresBiomeSource> CODEC = RecordCodecBuilder.create((instance) -> instance
+			.group(Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed))
+			.apply(instance, instance.stable(BiospheresBiomeSource::new)));
 	protected final long seed;
-	protected final int squareSize;
-	protected final int curveSize;
-	private final BiomeLayerSampler biomeSampler;
-	// all overworld biomes should generate on the planet!
+////	protected final long seed;
+////	protected final int squareSize;
+////	protected final int curveSize;
+////	private final BiomeLayerSampler biomeSampler;
 	private static final List<Biome> BIOMES = ImmutableList.<Biome>of(Biomes.OCEAN, Biomes.PLAINS, Biomes.DESERT,
 			Biomes.MOUNTAINS, Biomes.FOREST, Biomes.TAIGA, Biomes.SWAMP, Biomes.RIVER, Biomes.FROZEN_OCEAN,
 			Biomes.FROZEN_RIVER, Biomes.SNOWY_TUNDRA, Biomes.SNOWY_MOUNTAINS, Biomes.MUSHROOM_FIELDS,
@@ -41,42 +50,39 @@ public class GlobeBiomeSource extends BiomeSource {
 			Biomes.SNOWY_TAIGA_MOUNTAINS, Biomes.GIANT_SPRUCE_TAIGA, Biomes.GIANT_SPRUCE_TAIGA_HILLS,
 			Biomes.MODIFIED_GRAVELLY_MOUNTAINS, Biomes.SHATTERED_SAVANNA, Biomes.SHATTERED_SAVANNA_PLATEAU,
 			Biomes.ERODED_BADLANDS, Biomes.MODIFIED_WOODED_BADLANDS_PLATEAU, Biomes.MODIFIED_BADLANDS_PLATEAU);
-	public static final Codec<GlobeBiomeSource> CODEC = RecordCodecBuilder.create((instance) -> instance
-			.group(Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed),
-					Codec.INT.fieldOf("square_size").forGetter((generator) -> generator.squareSize),
-					Codec.INT.fieldOf("curve_size").forGetter((generator) -> generator.curveSize))
-			.apply(instance, instance.stable(GlobeBiomeSource::new)));
-
-	public GlobeBiomeSource(long seed, int squareSize, int curveSize) {
-		super(GlobeBiomeSource.BIOMES);
-		
-//		GlobeBiomeSource.BIOMES.addAll(InternalBiomeData.getOverworldModdedContinentalBiomePickers().);
+////	public static final Codec<BiosphereBiomeSource> CODEC = Codec.mapPair(Identifier.CODEC.flatXmap(
+////			identifier -> Optional.<MultiNoiseBiomeSource.Preset>ofNullable(this.Preset.field_24724.get(identifier))
+////					.map(DataResult::success).orElseGet(() -> DataResult.error("Unknown preset: " + identifier)),
+////			preset -> DataResult.success(preset.id)).fieldOf("preset"), Codec.LONG.fieldOf("seed")).stable();
+//
+	protected BiospheresBiomeSource(long seed) {
+		super(BIOMES);
 		this.seed = seed;
-		this.squareSize = squareSize;
-		this.curveSize = curveSize;
-		this.biomeSampler = BiomeLayers.build(seed, false, 2, 4);
+		// TODO Auto-generated constructor stub
 	}
 
 	@Override
 	public Biome getBiomeForNoiseGen(int biomeX, int biomeY, int biomeZ) {
 //		if(biomeX < 0) biomeX++;
 //		if(biomeZ < 0) biomeZ++;
-		if(Math.abs(biomeX)-6 > ((squareSize+curveSize)/8) || Math.abs(biomeZ)-6 > ((squareSize+curveSize)/8)) 
+//		if (Math.abs(biomeX) - 6 > ((squareSize + curveSize) / 8)
+//				|| Math.abs(biomeZ) - 6 > ((squareSize + curveSize) / 8))
 ////		System.out.println("AAAAAAAAAA");
-			return Biomes.THE_VOID;
-		return this.biomeSampler.sample(biomeX, biomeZ);
+		return Biomes.PLAINS;
+//		return this.biomeSampler.sample(biomeX, biomeZ);
 //		return Biomes.OCEAN;
 	}
 
 	@Override
 	protected Codec<? extends BiomeSource> method_28442() {
 		// TODO Auto-generated method stub
-		return GlobeBiomeSource.CODEC;
+		return BiospheresBiomeSource.CODEC;
 	}
 
 	@Override
 	public BiomeSource withSeed(long seed) {
+		return new BiospheresBiomeSource(seed);
 		// TODO Auto-generated method stub
-		return new GlobeBiomeSource(seed, this.squareSize, this.curveSize);
+//		return new BiosphereBiomeSource(seed, this.squareSize, this.curveSize);
 	}
 }
