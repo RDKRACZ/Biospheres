@@ -16,6 +16,8 @@ import net.fabricmc.fabric.api.biomes.v1.OverworldBiomes;
 import net.fabricmc.fabric.impl.biome.InternalBiomeData;
 import net.minecraft.util.Identifier;
 import com.mojang.datafixers.util.Pair;
+
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.Biomes;
@@ -23,6 +25,7 @@ import net.minecraft.world.biome.layer.BiomeLayers;
 import net.minecraft.world.biome.source.BiomeLayerSampler;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.MultiNoiseBiomeSource;
+import net.minecraft.world.gen.ChunkRandom;
 
 public class BiospheresBiomeSource extends BiomeSource {
 
@@ -30,6 +33,9 @@ public class BiospheresBiomeSource extends BiomeSource {
 			.group(Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed))
 			.apply(instance, instance.stable(BiospheresBiomeSource::new)));
 	protected final long seed;
+	protected final int sphereDistance;
+	protected final int sphereRadius;
+	protected final ChunkRandom chunkRandom;
 ////	protected final long seed;
 ////	protected final int squareSize;
 ////	protected final int curveSize;
@@ -58,6 +64,9 @@ public class BiospheresBiomeSource extends BiomeSource {
 	protected BiospheresBiomeSource(long seed) {
 		super(BIOMES);
 		this.seed = seed;
+		this.sphereDistance = 128;
+		this.sphereRadius = 32;
+		this.chunkRandom = new ChunkRandom(seed);
 		// TODO Auto-generated constructor stub
 	}
 
@@ -68,11 +77,25 @@ public class BiospheresBiomeSource extends BiomeSource {
 //		if (Math.abs(biomeX) - 6 > ((squareSize + curveSize) / 8)
 //				|| Math.abs(biomeZ) - 6 > ((squareSize + curveSize) / 8))
 ////		System.out.println("AAAAAAAAAA");
-		return Biomes.PLAINS;
+		
+		
+//		BlockPos centerPos 
+		if(this.getDistanceFromSphere(biomeX, biomeZ) <= this.sphereRadius*2) {
+			return Biomes.JUNGLE;
+		} 
+		return Biomes.THE_VOID;
 //		return this.biomeSampler.sample(biomeX, biomeZ);
 //		return Biomes.OCEAN;
 	}
 
+	public double getDistanceFromSphere(int biomeX, int biomeZ) {
+		int centerX = (int) Math.round(biomeX*4 / (double) this.sphereDistance) * this.sphereDistance;
+		int centerZ = (int) Math.round(biomeZ*4 / (double) this.sphereDistance) * this.sphereDistance;
+		this.chunkRandom.setTerrainSeed(centerX, centerZ);
+		BlockPos center = new BlockPos(centerX, 0, centerZ);
+		return Math.sqrt(center.getSquaredDistance(biomeX*4, 0, biomeZ*4, true));
+	}
+	
 	@Override
 	protected Codec<? extends BiomeSource> method_28442() {
 		// TODO Auto-generated method stub
