@@ -42,6 +42,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final ChunkRandom chunkRandom;
 	protected final BlockState defaultBlock;
 	protected final BlockState defaultFluid;
+	protected final BlockState defaultBridge;
+	protected final BlockState defaultEdge;
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.field_24713.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
 					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed))
@@ -56,6 +58,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.oreSphereRadius = 8;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
 		this.defaultFluid = Blocks.WATER.getDefaultState();
+		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
+		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
 		chunkRandom = new ChunkRandom(this.seed);
 		// TODO Auto-generated constructor stub
 	}
@@ -129,7 +133,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int centerX = (int) Math.round(xPos / (double) this.sphereDistance) * this.sphereDistance;
 		int centerZ = (int) Math.round(zPos / (double) this.sphereDistance) * this.sphereDistance;
 		this.chunkRandom.setTerrainSeed(centerX, centerZ);
-		int centerY = chunkRandom.nextInt(256 - this.sphereRadius * 4) + this.sphereRadius * 2;
+		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat()%1.0)-0.5,3)+0.5)*(256 - this.sphereRadius * 4)) + this.sphereRadius * 2;
 		return new BlockPos(centerX, centerY, centerZ);
 	}
 //	private void genSphere(BlockPos center, BlockPos.Mutable current, Chunk chunk, long radius) {
@@ -138,13 +142,12 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public ChunkGenerator withSeed(long arg0) {
-		// TODO Auto-generated method stub
 		return new BiospheresChunkGenerator(this.biomeSource, arg0);
 	}
 
-//	@Override
-//	public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {
-//	}
+	@Override
+	public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {
+	}
 
 	@Override
 	public void setStructureStarts(StructureAccessor structureAccessor, Chunk chunk, StructureManager structureManager,
@@ -160,7 +163,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	@Override
 	public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
 		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
-		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() + 2, 2, chunkCenter.getZ() + 2);
+		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX()/4 + 2, 2, chunkCenter.getZ()/4 + 2);
+		int runs = 0;
 		long populationSeed = this.chunkRandom.setPopulationSeed(region.getSeed(), chunkCenter.getX(),
 				chunkCenter.getZ());
 		for (final GenerationStep.Feature feature : GenerationStep.Feature.values()) {
@@ -168,6 +172,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				continue;
 			}
 			try {
+				runs++;
 				biome.generateFeatureStep(feature, accessor, this, region, populationSeed, this.chunkRandom,
 						chunkCenter);
 			} catch (Exception exception) {
@@ -178,6 +183,28 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				throw new CrashException(crashReport);
 			}
 		}
+//		if(runs > 9) {
+			this.finishBiospheres(region);
+//		}
+	}
+
+	public BlockPos[] getClosestSpheres(BlockPos centerPos) {
+		BlockPos[] nesw = new BlockPos[4];
+		for (int i = 0; i < 4; i++) {
+			int xMod = centerPos.getX();
+			int zMod = centerPos.getZ();
+			if (i / 2 < 1) {
+				xMod += (int) Math.round(Math.pow(-1, i) * this.sphereDistance);
+			} else {
+				zMod += (int) Math.round(Math.pow(-1, i) * this.sphereDistance);
+			}
+			nesw[i] = this.getNearestCenterSphere(new BlockPos(xMod, 0, zMod));
+		}
+		return nesw;
+	}
+
+	public synchronized void finishBiospheres(ChunkRegion region) {
+		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7,
@@ -197,8 +224,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				}
 			} else {
 				if (pos.getY() == 255) {
-					this.makeBridges(pos, centerPos, this.getClosestSpheres(centerPos), region,
-							current);
+					this.makeBridges(pos, centerPos, this.getClosestSpheres(centerPos), region, current);
 					continue;
 				}
 			}
@@ -206,74 +232,78 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 	}
 
-	public BlockPos[] getClosestSpheres(BlockPos centerPos) {
-		BlockPos[] nesw = new BlockPos[4];
+	public void makeBridges(BlockPos pos, BlockPos centerPos, BlockPos[] nesw, ChunkRegion region,
+			BlockPos.Mutable current) {
+		// generating bridges!
+		double radialDistance = Math
+				.sqrt(centerPos.getSquaredDistance(pos.getX(), centerPos.getY(), pos.getZ(), false));
+//		if (radialDistance < this.sphereRadius) {
+//			return;
+//		}
 		for (int i = 0; i < 4; i++) {
-			int xMod = centerPos.getX();
-			int zMod = centerPos.getZ();
-			if (i / 2 < 1) {
-				xMod += (int) Math.round(Math.pow(-1, i) * this.sphereDistance);
-			} else {
-				zMod += (int) Math.round(Math.pow(-1, i) * this.sphereDistance);
+			if (radialDistance > this.sphereRadius) {
+				double slope = nesw[i].getY() - centerPos.getY();
+				BlockState blockState = Blocks.AIR.getDefaultState();
+				double currentPos = 0;
+				switch (i) {
+				case (0):
+					slope /= Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) - 2 * this.sphereRadius;
+					blockState = Blocks.BLUE_STAINED_GLASS.getDefaultState();
+					currentPos = centerPos.getX() - pos.getX() + this.sphereRadius;
+					if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2) {
+						if (pos.getX() > centerPos.getX()) {
+							this.fillBridgeSlice(
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
+									current, blockState);
+						}
+					}
+					break;
+				case (1):
+					slope /= -Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) + 2 * this.sphereRadius;
+					blockState = Blocks.PURPLE_STAINED_GLASS.getDefaultState();
+					currentPos = centerPos.getX() - pos.getX() - this.sphereRadius;
+					if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2) {
+						if (pos.getX() < centerPos.getX()) {
+							this.fillBridgeSlice(
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
+									current, blockState);
+						}
+					}
+					break;
+				case (2):
+					slope /= -Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) + 2 * this.sphereRadius;
+					blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
+					currentPos = centerPos.getZ() - pos.getZ() + this.sphereRadius;
+					if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2) {
+						if (pos.getZ() > centerPos.getZ()) {
+							this.fillBridgeSlice(
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
+									current, blockState);
+						}
+					}
+					break;
+				case (3):
+					slope /= Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) - 2 * this.sphereRadius;
+					blockState = Blocks.YELLOW_STAINED_GLASS.getDefaultState();
+					currentPos = centerPos.getZ() - pos.getZ() - this.sphereRadius;
+					if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2) {
+						if (pos.getZ() < centerPos.getZ()) {
+							this.fillBridgeSlice(
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
+									current, blockState);
+						}
+					}
+					break;
+				}
 			}
-			int centerX = (int) Math.round(xMod / (double) this.sphereDistance) * this.sphereDistance;
-			int centerZ = (int) Math.round(zMod / (double) this.sphereDistance) * this.sphereDistance;
-			this.chunkRandom.setTerrainSeed(centerX, centerZ);
-			int centerY = chunkRandom.nextInt(256 - this.sphereRadius * 4) + this.sphereRadius * 2;
-			nesw[i] = new BlockPos(centerX, centerY, centerZ);
 		}
-		return nesw;
 	}
 
-	public void makeBridges(BlockPos pos, BlockPos centerPos, BlockPos[] nesw,
-			ChunkRegion region, BlockPos.Mutable current) {
-		// generating bridges!
-		double radialDistance = Math.sqrt(pos.getSquaredDistance(centerPos));
-		for (BlockPos direction : nesw) {
-			if (radialDistance >= this.sphereRadius) {
-				double slope = direction.getY() - centerPos.getY();
-				if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2 && centerPos.getZ()!=direction.getZ()) {
-//					if (direction.getX() > this.sphereRadius) {
-//						slope /= Math.abs((double) (this.sphereDistance - this.sphereRadius * 2));
-					slope /= Math.abs((double) (centerPos.getZ() - direction.getZ())) - 2 * this.sphereRadius;
-					double currentPos = centerPos.getZ() - pos.getZ();
-					BlockState blockState = Blocks.AIR.getDefaultState();
-					if (centerPos.getZ() - direction.getZ() > 0) {
-						blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
-						currentPos -= this.sphereRadius;
-					}
-					if (centerPos.getZ() - direction.getZ() < 0) {
-						blockState = Blocks.BLUE_STAINED_GLASS.getDefaultState();
-						currentPos += this.sphereRadius;
-						slope*=-1;
-					}
-					if (slope * currentPos + centerPos.getY() > 0)
-						region.setBlockState(current.set(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
-								blockState, 0);
-//					}
-				}
-				else if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2 && centerPos.getX()!=direction.getX()) {
-//					if (direction.getX() > this.sphereRadius) {
-//						slope /= Math.abs((double) (this.sphereDistance - this.sphereRadius * 2));
-					slope /= Math.abs((double) (centerPos.getX() - direction.getX())) - 2 * this.sphereRadius;
-					double currentPos = centerPos.getX() - pos.getX();
-					BlockState blockState = Blocks.AIR.getDefaultState();
-					if (centerPos.getX() - direction.getX() > 0) {
-						blockState = Blocks.PURPLE_STAINED_GLASS.getDefaultState();
-						currentPos -= this.sphereRadius;
-					}
-					if (centerPos.getX() - direction.getX() < 0) {
-						blockState = Blocks.YELLOW_STAINED_GLASS.getDefaultState();
-						currentPos += this.sphereRadius;
-						slope*=-1;
-					}
-					if (slope * currentPos + centerPos.getY() > 0)
-						region.setBlockState(current.set(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
-								blockState, 0);
-//					}
-				}
-			}
-			continue;
-		}
+	public void fillBridgeSlice(BlockPos pos, ChunkRegion region, BlockPos.Mutable current, BlockState blockState) {
+		region.setBlockState(current.set(pos), blockState, 0);
 	}
+
+//	@Override
+//	public void populateEntities(ChunkRegion region) {
+//	}
 }
