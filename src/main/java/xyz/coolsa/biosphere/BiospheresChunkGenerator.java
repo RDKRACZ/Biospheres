@@ -154,7 +154,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public void addStructureReferences(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
-		
+
 	}
 
 	@Override
@@ -164,7 +164,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		long populationSeed = this.chunkRandom.setPopulationSeed(region.getSeed(), chunkCenter.getX(),
 				chunkCenter.getZ());
 		for (final GenerationStep.Feature feature : GenerationStep.Feature.values()) {
-			if(feature.equals(GenerationStep.Feature.LAKES)) { continue;}
+			if (feature.equals(GenerationStep.Feature.LAKES)) {
+				continue;
+			}
 			try {
 				biome.generateFeatureStep(feature, accessor, this, region, populationSeed, this.chunkRandom,
 						chunkCenter);
@@ -178,8 +180,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
-		Chunk currentChunk = region.getChunk(chunkCenter);
-		BlockPos[] nesw = this.getClosestSpheres(centerPos);
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7,
 				chunkCenter.getX() + 8, 256, chunkCenter.getZ() + 8)) {
 			current.set(pos);
@@ -195,23 +195,11 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				} else {// if(!(region.getBlockState(pos).equals(Blocks.STONE.getDefaultState()))){
 					blockState = Blocks.STONE.getDefaultState();
 				}
-			}
-			//generating bridges!
-			for (BlockPos direction : nesw) {
-				if (radialDistance > this.sphereRadius - 1) {
-					double slope = Math.abs(direction.getY()-centerPos.getY());
-					int currentY = pos.getY()-centerPos.getY();
-					if (direction.getX() == pos.getX()) {
-						slope /= (double)direction.getX()-centerPos.getX();
-						int currentPos = (pos.getX()-centerPos.getX());
-						if (slope*currentPos > currentY && slope*currentPos < currentY)
-							blockState = Blocks.OAK_PLANKS.getDefaultState();
-					} else if (direction.getZ() == pos.getZ()) {
-						slope /= (double)direction.getZ()-centerPos.getZ();
-						int currentPos = pos.getX()-centerPos.getX();
-						if (slope*currentPos > currentY && slope*currentPos < currentY)
-							blockState = Blocks.OAK_PLANKS.getDefaultState();
-					}
+			} else {
+				if (pos.getY() == 255) {
+					this.makeBridges(pos, centerPos, this.getClosestSpheres(centerPos), region,
+							current);
+					continue;
 				}
 			}
 			region.setBlockState(current.set(pos), blockState, 0);
@@ -237,4 +225,55 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		return nesw;
 	}
 
+	public void makeBridges(BlockPos pos, BlockPos centerPos, BlockPos[] nesw,
+			ChunkRegion region, BlockPos.Mutable current) {
+		// generating bridges!
+		double radialDistance = Math.sqrt(pos.getSquaredDistance(centerPos));
+		for (BlockPos direction : nesw) {
+			if (radialDistance >= this.sphereRadius) {
+				double slope = direction.getY() - centerPos.getY();
+				if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2 && centerPos.getZ()!=direction.getZ()) {
+//					if (direction.getX() > this.sphereRadius) {
+//						slope /= Math.abs((double) (this.sphereDistance - this.sphereRadius * 2));
+					slope /= Math.abs((double) (centerPos.getZ() - direction.getZ())) - 2 * this.sphereRadius;
+					double currentPos = centerPos.getZ() - pos.getZ();
+					BlockState blockState = Blocks.AIR.getDefaultState();
+					if (centerPos.getZ() - direction.getZ() > 0) {
+						blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
+						currentPos -= this.sphereRadius;
+					}
+					if (centerPos.getZ() - direction.getZ() < 0) {
+						blockState = Blocks.BLUE_STAINED_GLASS.getDefaultState();
+						currentPos += this.sphereRadius;
+						slope*=-1;
+					}
+					if (slope * currentPos + centerPos.getY() > 0)
+						region.setBlockState(current.set(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+								blockState, 0);
+//					}
+				}
+				else if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2 && centerPos.getX()!=direction.getX()) {
+//					if (direction.getX() > this.sphereRadius) {
+//						slope /= Math.abs((double) (this.sphereDistance - this.sphereRadius * 2));
+					slope /= Math.abs((double) (centerPos.getX() - direction.getX())) - 2 * this.sphereRadius;
+					double currentPos = centerPos.getX() - pos.getX();
+					BlockState blockState = Blocks.AIR.getDefaultState();
+					if (centerPos.getX() - direction.getX() > 0) {
+						blockState = Blocks.PURPLE_STAINED_GLASS.getDefaultState();
+						currentPos -= this.sphereRadius;
+					}
+					if (centerPos.getX() - direction.getX() < 0) {
+						blockState = Blocks.YELLOW_STAINED_GLASS.getDefaultState();
+						currentPos += this.sphereRadius;
+						slope*=-1;
+					}
+					if (slope * currentPos + centerPos.getY() > 0)
+						region.setBlockState(current.set(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+								blockState, 0);
+//					}
+				}
+			}
+			continue;
+		}
+	}
 }
