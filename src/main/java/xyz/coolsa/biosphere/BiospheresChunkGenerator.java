@@ -48,6 +48,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final int sphereRadius;
 	protected final int oreSphereRadius;
 	protected final int lakeRadius;
+	protected final int shoreRadius;
 	protected final BiomeSource biomeSource;
 	protected final ChunkRandom chunkRandom;
 	protected final OctavePerlinNoiseSampler noiseSampler;
@@ -68,6 +69,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.sphereRadius = 32;
 		this.oreSphereRadius = 8;
 		this.lakeRadius = 8;
+		this.shoreRadius = 10;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
 		this.defaultFluid = Blocks.WATER.getDefaultState();
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
@@ -115,12 +117,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int xPos = chunkPos.getStartX();
 		int zPos = chunkPos.getStartZ();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getCenterBlockPos());
+//		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getCenterBlockPos());
 		BlockState fluidBlock = this.getLakeBlock(centerPos);
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getHeightmap(Type.WORLD_SURFACE_WG);
 		for (final BlockPos pos : BlockPos.iterate(xPos, 0, zPos, xPos + 15, 256, zPos + 15)) {
 			current.set(pos);
 			double radialDistance = Math.sqrt(pos.getSquaredDistance(centerPos));
+//			double oreRadialDistance = Math.sqrt(pos.getSquaredDistance(oreCenterPos));
 			BlockState blockState = Blocks.AIR.getDefaultState();
 			if (radialDistance <= this.sphereRadius) {
 				double noise = this.noiseSampler.sample(pos.getX() / 16.0, pos.getZ() / 16.0, 1 / 16.0, 1 / 16.0) / 8
@@ -129,7 +133,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					blockState = this.defaultBlock;
 				}
 				if (blockState.equals(this.defaultBlock) && radialDistance <= this.lakeRadius) {
-					if (pos.getY() * noise >= centerPos.getY()) {
+					if (pos.getY() * noise >= centerPos.getY() - 1) {
 						blockState = Blocks.AIR.getDefaultState();
 					} else if (fluidBlock.equals(this.defaultFluid)) {
 						blockState = fluidBlock;
@@ -138,6 +142,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					}
 				}
 			}
+//			if (oreRadialDistance <= this.oreSphereRadius) {
+//					blockState = this.defaultBlock;
+//			}
 			chunk.setBlockState(current.set(pos), blockState, false);
 			oceanHeight.trackUpdate(pos.getX() & 0xF, pos.getY() & 0xF, pos.getZ() & 0xF, blockState);
 			worldSurface.trackUpdate(pos.getX() & 0xF, pos.getY() & 0xF, pos.getZ() & 0xF, blockState);
@@ -153,6 +160,16 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat() % 1.0) - 0.5, 3) + 0.5)
 				* (256 - this.sphereRadius * 4)) + this.sphereRadius * 2;
 		return new BlockPos(centerX, centerY, centerZ);
+	}
+
+	public BlockPos getNearestOreSphere(BlockPos pos) {
+		int xPos = pos.getX();
+		int zPos = pos.getZ();
+		int centerX = (int) Math.round(xPos / (double) this.sphereDistance - 0.5) * this.sphereDistance;
+		int centerZ = (int) Math.round(zPos / (double) this.sphereDistance - 0.5) * this.sphereDistance;
+		this.chunkRandom.setTerrainSeed(centerX, centerZ);
+		int centerY = this.chunkRandom.nextInt(256 - this.oreSphereRadius * 4) + this.oreSphereRadius * 2;
+		return new BlockPos(centerX + this.sphereDistance / 2, centerY, centerZ + this.sphereDistance / 2);
 	}
 
 	public BlockState getLakeBlock(BlockPos center) {
@@ -191,30 +208,53 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
 		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
 		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
-		
-        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.IRON_ORE.getDefaultState(), 9)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(20, 32, 0, 128))));
-        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.GOLD_ORE.getDefaultState(), 9)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(2, 64, 0, 32))));
-        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.REDSTONE_ORE.getDefaultState(), 8)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(8, 100, 0, 16))));
-        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.DIAMOND_ORE.getDefaultState(), 8)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(1, 100, 0, 16))));
-        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.LAPIS_ORE.getDefaultState(), 7)).createDecoratedFeature(Decorator.COUNT_DEPTH_AVERAGE.configure(new CountDepthDecoratorConfig(1, 128, 32))));
- 
-		long populationSeed = this.chunkRandom.setPopulationSeed(region.getSeed(), chunkCenter.getX(),
-				chunkCenter.getZ());
-		for (final GenerationStep.Feature feature : GenerationStep.Feature.values()) {
-			if (feature.equals(GenerationStep.Feature.LAKES)) {
-				continue;
-			}
-			try {
-				biome.generateFeatureStep(feature, accessor, this, region, populationSeed, this.chunkRandom,
-						chunkCenter);
-			} catch (Exception exception) {
-				CrashReport crashReport = CrashReport.create(exception, "Biosphere Biome Decoration");
-				crashReport.addElement("Generation").add("CenterX", chunkCenter.getX())
-						.add("CenterZ", chunkCenter.getZ()).add("Step", feature).add("Seed", populationSeed)
-						.add("Biome", Registry.BIOME.getId(biome));
-				throw new CrashException(crashReport);
-			}
+		biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES,
+				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
+						Blocks.IRON_ORE.getDefaultState(), 9)).createDecoratedFeature(
+								Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(20, 32, 0, 128))));
+		biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES,
+				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
+						Blocks.REDSTONE_ORE.getDefaultState(), 8)).createDecoratedFeature(
+								Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(8, 96, 0, 16))));
+
+		if (!biome.equals(Biomes.THE_VOID)) {
+			biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE
+					.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
+							Blocks.LAPIS_ORE.getDefaultState(), 7))
+					.createDecoratedFeature(
+							Decorator.COUNT_DEPTH_AVERAGE.configure(new CountDepthDecoratorConfig(2, 128, 32))));
+			biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE
+					.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
+							Blocks.GOLD_ORE.getDefaultState(), 9))
+					.createDecoratedFeature(
+							Decorator.COUNT_DEPTH_AVERAGE.configure(new CountDepthDecoratorConfig(2, 128, 32))));
+			biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE
+					.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
+							Blocks.DIAMOND_ORE.getDefaultState(), 8))
+					.createDecoratedFeature(
+							Decorator.COUNT_DEPTH_AVERAGE.configure(new CountDepthDecoratorConfig(1, 128, 32))));
 		}
+		super.generateFeatures(region, accessor);
+//		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
+//		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
+//		
+//		long populationSeed = this.chunkRandom.setPopulationSeed(region.getSeed(), chunkCenter.getX(),
+//				chunkCenter.getZ());
+//		for (final GenerationStep.Feature feature : GenerationStep.Feature.values()) {
+//			if (feature.equals(GenerationStep.Feature.LAKES)) {
+//				continue;
+//			}
+//			try {
+//				biome.generateFeatureStep(feature, accessor, this, region, populationSeed, this.chunkRandom,
+//						chunkCenter);
+//			} catch (Exception exception) {
+//				CrashReport crashReport = CrashReport.create(exception, "Biosphere Biome Decoration");
+//				crashReport.addElement("Generation").add("CenterX", chunkCenter.getX())
+//						.add("CenterZ", chunkCenter.getZ()).add("Step", feature).add("Seed", populationSeed)
+//						.add("Biome", Registry.BIOME.getId(biome));
+//				throw new CrashException(crashReport);
+//			}
+//		}
 //		if(runs > 9) {
 		this.finishBiospheres(region);
 //		}
