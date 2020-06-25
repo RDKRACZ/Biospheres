@@ -1,6 +1,7 @@
 package xyz.coolsa.biosphere;
 
 import java.util.Random;
+import java.util.stream.IntStream;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -14,6 +15,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Position;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
+import net.minecraft.util.math.noise.OctaveSimplexNoiseSampler;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.ChunkRegion;
@@ -30,6 +33,12 @@ import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
+import net.minecraft.world.gen.decorator.CountDepthDecoratorConfig;
+import net.minecraft.world.gen.decorator.Decorator;
+import net.minecraft.world.gen.decorator.RangeDecoratorConfig;
+import net.minecraft.world.gen.feature.DefaultBiomeFeatures;
+import net.minecraft.world.gen.feature.Feature;
+import net.minecraft.world.gen.feature.OreFeatureConfig;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.StructuresConfig;
 
@@ -38,8 +47,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final int sphereDistance;
 	protected final int sphereRadius;
 	protected final int oreSphereRadius;
+	protected final int lakeRadius;
 	protected final BiomeSource biomeSource;
 	protected final ChunkRandom chunkRandom;
+	protected final OctavePerlinNoiseSampler noiseSampler;
 	protected final BlockState defaultBlock;
 	protected final BlockState defaultFluid;
 	protected final BlockState defaultBridge;
@@ -56,11 +67,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.sphereDistance = 128;
 		this.sphereRadius = 32;
 		this.oreSphereRadius = 8;
+		this.lakeRadius = 8;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
 		this.defaultFluid = Blocks.WATER.getDefaultState();
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
-		chunkRandom = new ChunkRandom(this.seed);
+		this.chunkRandom = new ChunkRandom(this.seed);
+		this.chunkRandom.consume(1000);
+		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
 		// TODO Auto-generated constructor stub
 	}
 
@@ -101,6 +115,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int xPos = chunkPos.getStartX();
 		int zPos = chunkPos.getStartZ();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getCenterBlockPos());
+		BlockState fluidBlock = this.getLakeBlock(centerPos);
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getHeightmap(Type.WORLD_SURFACE_WG);
 		for (final BlockPos pos : BlockPos.iterate(xPos, 0, zPos, xPos + 15, 256, zPos + 15)) {
@@ -108,19 +123,21 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 			double radialDistance = Math.sqrt(pos.getSquaredDistance(centerPos));
 			BlockState blockState = Blocks.AIR.getDefaultState();
 			if (radialDistance <= this.sphereRadius) {
-				if (pos.getY() < centerPos.getY()) {
-					blockState = Blocks.STONE.getDefaultState();
+				double noise = this.noiseSampler.sample(pos.getX() / 16.0, pos.getZ() / 16.0, 1 / 16.0, 1 / 16.0) / 8
+						+ (pos.getY() / centerPos.getY());
+				if (pos.getY() * noise < centerPos.getY()) {
+					blockState = this.defaultBlock;
+				}
+				if (blockState.equals(this.defaultBlock) && radialDistance <= this.lakeRadius) {
+					if (pos.getY() * noise >= centerPos.getY()) {
+						blockState = Blocks.AIR.getDefaultState();
+					} else if (fluidBlock.equals(this.defaultFluid)) {
+						blockState = fluidBlock;
+					} else if (fluidBlock.equals(Blocks.LAVA.getDefaultState())) {
+						blockState = fluidBlock;
+					}
 				}
 			}
-//			else if (radialDistance <= this.sphereRadius) {
-//				if (pos.getY() > centerPos.getY()) {
-////					blockState = Blocks.GLASS.getDefaultState();
-//				} else if (pos.getY() < centerPos.getY() - this.sphereRadius / 2) {
-////					blockState = Blocks.OBSIDIAN.getDefaultState();
-//				} else {
-////					blockState = Blocks.STONE.getDefaultState();
-//				}
-//			}
 			chunk.setBlockState(current.set(pos), blockState, false);
 			oceanHeight.trackUpdate(pos.getX() & 0xF, pos.getY() & 0xF, pos.getZ() & 0xF, blockState);
 			worldSurface.trackUpdate(pos.getX() & 0xF, pos.getY() & 0xF, pos.getZ() & 0xF, blockState);
@@ -133,12 +150,22 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int centerX = (int) Math.round(xPos / (double) this.sphereDistance) * this.sphereDistance;
 		int centerZ = (int) Math.round(zPos / (double) this.sphereDistance) * this.sphereDistance;
 		this.chunkRandom.setTerrainSeed(centerX, centerZ);
-		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat()%1.0)-0.5,3)+0.5)*(256 - this.sphereRadius * 4)) + this.sphereRadius * 2;
+		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat() % 1.0) - 0.5, 3) + 0.5)
+				* (256 - this.sphereRadius * 4)) + this.sphereRadius * 2;
 		return new BlockPos(centerX, centerY, centerZ);
 	}
-//	private void genSphere(BlockPos center, BlockPos.Mutable current, Chunk chunk, long radius) {
-//		
-//	}
+
+	public BlockState getLakeBlock(BlockPos center) {
+		this.chunkRandom.setTerrainSeed(center.getX(), center.getZ());
+		int rng = this.chunkRandom.nextInt(10);
+		BlockState state = Blocks.AIR.getDefaultState();
+		if (rng >= 5 && rng <= 9)
+			state = this.defaultFluid;
+		else if (rng == 10) {
+			state = Blocks.LAVA.getDefaultState();
+		}
+		return state;
+	}
 
 	@Override
 	public ChunkGenerator withSeed(long arg0) {
@@ -163,8 +190,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	@Override
 	public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
 		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
-		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX()/4 + 2, 2, chunkCenter.getZ()/4 + 2);
-		int runs = 0;
+		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
+		
+        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.IRON_ORE.getDefaultState(), 9)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(20, 32, 0, 128))));
+        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.GOLD_ORE.getDefaultState(), 9)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(2, 64, 0, 32))));
+        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.REDSTONE_ORE.getDefaultState(), 8)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(8, 100, 0, 16))));
+        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.DIAMOND_ORE.getDefaultState(), 8)).createDecoratedFeature(Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(1, 100, 0, 16))));
+        biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE, Blocks.LAPIS_ORE.getDefaultState(), 7)).createDecoratedFeature(Decorator.COUNT_DEPTH_AVERAGE.configure(new CountDepthDecoratorConfig(1, 128, 32))));
+ 
 		long populationSeed = this.chunkRandom.setPopulationSeed(region.getSeed(), chunkCenter.getX(),
 				chunkCenter.getZ());
 		for (final GenerationStep.Feature feature : GenerationStep.Feature.values()) {
@@ -172,7 +205,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				continue;
 			}
 			try {
-				runs++;
 				biome.generateFeatureStep(feature, accessor, this, region, populationSeed, this.chunkRandom,
 						chunkCenter);
 			} catch (Exception exception) {
@@ -184,7 +216,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 			}
 		}
 //		if(runs > 9) {
-			this.finishBiospheres(region);
+		this.finishBiospheres(region);
 //		}
 	}
 
@@ -203,7 +235,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		return nesw;
 	}
 
-	public synchronized void finishBiospheres(ChunkRegion region) {
+	public void finishBiospheres(ChunkRegion region) {
 		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
@@ -241,56 +273,56 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //			return;
 //		}
 		for (int i = 0; i < 4; i++) {
-			if (radialDistance > this.sphereRadius) {
+			if (radialDistance > this.sphereRadius - 2) {
 				double slope = nesw[i].getY() - centerPos.getY();
-				BlockState blockState = Blocks.AIR.getDefaultState();
+//				BlockState blockState = Blocks.AIR.getDefaultState();
 				double currentPos = 0;
 				switch (i) {
 				case (0):
 					slope /= Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) - 2 * this.sphereRadius;
-					blockState = Blocks.BLUE_STAINED_GLASS.getDefaultState();
+//					blockState = Blocks.BLUE_STAINED_GLASS.getDefaultState();
 					currentPos = centerPos.getX() - pos.getX() + this.sphereRadius;
-					if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2) {
+					if (pos.getZ() <= centerPos.getZ() + 2 && pos.getZ() >= centerPos.getZ() - 2) {
 						if (pos.getX() > centerPos.getX()) {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current, blockState);
+									current);
 						}
 					}
 					break;
 				case (1):
 					slope /= -Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) + 2 * this.sphereRadius;
-					blockState = Blocks.PURPLE_STAINED_GLASS.getDefaultState();
+//					blockState = Blocks.PURPLE_STAINED_GLASS.getDefaultState();
 					currentPos = centerPos.getX() - pos.getX() - this.sphereRadius;
-					if (pos.getZ() < centerPos.getZ() + 2 && pos.getZ() > centerPos.getZ() - 2) {
+					if (pos.getZ() <= centerPos.getZ() + 2 && pos.getZ() >= centerPos.getZ() - 2) {
 						if (pos.getX() < centerPos.getX()) {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current, blockState);
+									current);
 						}
 					}
 					break;
 				case (2):
 					slope /= -Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) + 2 * this.sphereRadius;
-					blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
+//					blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
 					currentPos = centerPos.getZ() - pos.getZ() + this.sphereRadius;
-					if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2) {
+					if (pos.getX() <= centerPos.getX() + 2 && pos.getX() >= centerPos.getX() - 2) {
 						if (pos.getZ() > centerPos.getZ()) {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current, blockState);
+									current);
 						}
 					}
 					break;
 				case (3):
 					slope /= Math.abs((double) (centerPos.getZ() - nesw[i].getZ())) - 2 * this.sphereRadius;
-					blockState = Blocks.YELLOW_STAINED_GLASS.getDefaultState();
+//					blockState = Blocks.YELLOW_STAINED_GLASS.getDefaultState();
 					currentPos = centerPos.getZ() - pos.getZ() - this.sphereRadius;
-					if (pos.getX() < centerPos.getX() + 2 && pos.getX() > centerPos.getX() - 2) {
+					if (pos.getX() <= centerPos.getX() + 2 && pos.getX() >= centerPos.getX() - 2) {
 						if (pos.getZ() < centerPos.getZ()) {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current, blockState);
+									current);
 						}
 					}
 					break;
@@ -299,8 +331,15 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 	}
 
-	public void fillBridgeSlice(BlockPos pos, ChunkRegion region, BlockPos.Mutable current, BlockState blockState) {
-		region.setBlockState(current.set(pos), blockState, 0);
+	public void fillBridgeSlice(BlockPos pos, ChunkRegion region, BlockPos.Mutable current) {
+		int x = pos.getX();
+		int y = pos.getY();
+		int z = pos.getZ();
+		region.setBlockState(current.set(x, y - 1, z), this.defaultBridge, 0);
+		region.setBlockState(current.set(x, y, z), Blocks.AIR.getDefaultState(), 0);
+		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
+		region.setBlockState(current.set(x, y + 2, z), Blocks.AIR.getDefaultState(), 0);
+		region.setBlockState(current.set(x, y + 3, z), Blocks.AIR.getDefaultState(), 0);
 	}
 
 //	@Override
