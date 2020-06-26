@@ -1,4 +1,4 @@
-# Fabric Example Mod
+# Biospheres (Fabric)
 
 ## Setup
 
@@ -10,7 +10,7 @@ This is a recreation of [Risugami's original biosphere's mod](https://www.minecr
 
 It is made for Minecraft 1.16.1 and above.
 
-This is not a Forge mod, however there does [exist a Forge version of this mod created by harryyoud.](https://github.com/harryyoud/biospheres).
+This is not a Forge mod, however there does [exist a Forge version of this mod created by harryyoud.](https://github.com/harryyoud/biospheres)
 
 ## License
 
