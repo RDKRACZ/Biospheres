@@ -86,7 +86,7 @@ public class BiospheresBiomeSource extends BiomeSource {
 ////		System.out.println("AAAAAAAAAA");
 
 //		BlockPos centerPos 
-		if (this.getDistanceFromSphere(biomeX, biomeZ) < this.sphereRadius+4) {
+		if (this.getDistanceFromSphere(biomeX+1, biomeZ+1) < this.sphereRadius+6) {
 			return this.getBiomeForSphere(biomeX, biomeZ);
 		}
 		return Biomes.THE_VOID;
