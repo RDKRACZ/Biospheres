@@ -58,18 +58,22 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final BlockState defaultEdge;
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.field_24713.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
-					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed))
+					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed),
+					Codec.INT.fieldOf("sphere_distance").forGetter((generator) -> generator.sphereDistance),
+					Codec.INT.fieldOf("sphere_radius").forGetter((generator) -> generator.sphereRadius),
+					Codec.INT.fieldOf("lake_radius").forGetter((generator) -> generator.lakeRadius),
+					Codec.INT.fieldOf("lake_radius").forGetter((generator) -> generator.lakeRadius))
 			.apply(instance, instance.stable(BiospheresChunkGenerator::new)));
 
-	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed) {
+	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed, int sphereDistance, int sphereRadius, int lakeRadius, int shoreRadius) {
 		super(biomeSource, new StructuresConfig(false));
 		this.biomeSource = biomeSource;
 		this.seed = seed;
-		this.sphereDistance = 128;
-		this.sphereRadius = 32;
-		this.oreSphereRadius = 8;
-		this.lakeRadius = 8;
-		this.shoreRadius = 10;
+		this.sphereDistance = sphereDistance;
+		this.sphereRadius = sphereRadius;
+		this.oreSphereRadius = 8; //TODO: add in ore spheres.
+		this.lakeRadius = lakeRadius;
+		this.shoreRadius = shoreRadius;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
 		this.defaultFluid = Blocks.WATER.getDefaultState();
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
@@ -193,8 +197,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	}
 
 	@Override
-	public ChunkGenerator withSeed(long arg0) {
-		return new BiospheresChunkGenerator(this.biomeSource, arg0);
+	public ChunkGenerator withSeed(long seed) {
+		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereDistance, this.sphereRadius, this.lakeRadius, this.shoreRadius);
 	}
 
 	@Override
