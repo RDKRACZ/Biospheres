@@ -4,7 +4,7 @@
   "version": "${version}",
 
   "name": "Biospheres",
-  "description": "Based off the mod by Risugami, this is a more modern version of it.",
+  "description": "Based off the original mod by Risugami, but implimemented with fabric",
   "authors": [
     "Coolsa"
   ],
