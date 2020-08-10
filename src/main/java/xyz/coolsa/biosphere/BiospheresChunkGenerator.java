@@ -33,7 +33,6 @@ import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
-import net.minecraft.world.gen.decorator.CountDepthDecoratorConfig;
 import net.minecraft.world.gen.decorator.Decorator;
 import net.minecraft.world.gen.decorator.RangeDecoratorConfig;
 import net.minecraft.world.gen.feature.DefaultBiomeFeatures;
@@ -57,7 +56,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final BlockState defaultBridge;
 	protected final BlockState defaultEdge;
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
-			.group(BiomeSource.field_24713.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
+			.group(BiomeSource.CODEC.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
 					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed),
 					Codec.INT.fieldOf("sphere_distance").forGetter((generator) -> generator.sphereDistance),
 					Codec.INT.fieldOf("sphere_radius").forGetter((generator) -> generator.sphereRadius),
@@ -106,12 +105,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	public int getHeight(int x, int z, Type heightmapType) {
 		// TODO Auto-generated method stub
 		return 64;
-	}
-
-	@Override
-	protected Codec<? extends ChunkGenerator> method_28506() {
-		// TODO Auto-generated method stub
-		return BiospheresChunkGenerator.CODEC;
 	}
 
 	@Override
@@ -203,17 +196,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {
-	}
-
-	@Override
-	public void setStructureStarts(StructureAccessor structureAccessor, Chunk chunk, StructureManager structureManager,
-			long seed) {
-
-	}
-
-	@Override
-	public void addStructureReferences(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
-
 	}
 
 	@Override
@@ -406,6 +388,12 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 2, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 3, z), Blocks.AIR.getDefaultState(), 0);
+	}
+
+	@Override
+	protected Codec<? extends ChunkGenerator> getCodec() {
+		// TODO Auto-generated method stub
+		return BiospheresChunkGenerator.CODEC;
 	}
 
 //	@Override
