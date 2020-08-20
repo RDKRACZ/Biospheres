@@ -23,8 +23,8 @@ import net.minecraft.world.ChunkRegion;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.Heightmap.Type;
 import net.minecraft.world.WorldAccess;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.Biomes;
+//import net.minecraft.world.biome.Biome;
+//import net.minecraft.world.biome.Biomes;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.FixedBiomeSource;
@@ -61,7 +61,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					Codec.INT.fieldOf("sphere_distance").forGetter((generator) -> generator.sphereDistance),
 					Codec.INT.fieldOf("sphere_radius").forGetter((generator) -> generator.sphereRadius),
 					Codec.INT.fieldOf("lake_radius").forGetter((generator) -> generator.lakeRadius),
-					Codec.INT.fieldOf("lake_radius").forGetter((generator) -> generator.lakeRadius))
+					Codec.INT.fieldOf("shore_radius").forGetter((generator) -> generator.shoreRadius))
 			.apply(instance, instance.stable(BiospheresChunkGenerator::new)));
 
 	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed, int sphereDistance, int sphereRadius, int lakeRadius, int shoreRadius) {

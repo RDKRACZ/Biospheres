@@ -18,8 +18,13 @@ import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.registry.BuiltinRegistries;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.Biomes;
+import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.world.biome.BuiltinBiomes;
+//import net.minecraft.world.biome.Biomes;
+//import net.minecraft.world.biome.BuiltinBiomes;
 import net.minecraft.world.biome.layer.BiomeLayers;
 import net.minecraft.world.biome.source.BiomeLayerSampler;
 import net.minecraft.world.biome.source.BiomeSource;
@@ -44,28 +49,66 @@ public class BiospheresBiomeSource extends BiomeSource {
 ////	protected final int squareSize;
 ////	protected final int curveSize;
 ////	private final BiomeLayerSampler biomeSampler;
-	protected static final List<Biome> BIOMES = ImmutableList.<Biome>of(Biomes.PLAINS
-//			, Biomes.OCEAN, Biomes.DESERT, //comment out biomes for now, need to wait on biome api.
-//			Biomes.MOUNTAINS, Biomes.FOREST, Biomes.TAIGA, Biomes.SWAMP, Biomes.RIVER, Biomes.FROZEN_OCEAN,
-//			Biomes.FROZEN_RIVER, Biomes.MUSHROOM_FIELDS, Biomes.MUSHROOM_FIELD_SHORE, Biomes.BEACH, Biomes.DESERT_HILLS,
-//			Biomes.WOODED_HILLS, Biomes.TAIGA_HILLS, Biomes.MOUNTAIN_EDGE, Biomes.JUNGLE, Biomes.JUNGLE_HILLS,
-//			Biomes.JUNGLE_EDGE, Biomes.DEEP_OCEAN, Biomes.STONE_SHORE, Biomes.BIRCH_FOREST, Biomes.BIRCH_FOREST_HILLS,
-//			Biomes.DARK_FOREST, Biomes.GIANT_TREE_TAIGA, Biomes.GIANT_TREE_TAIGA_HILLS, Biomes.WOODED_MOUNTAINS,
-//			Biomes.SAVANNA, Biomes.SAVANNA_PLATEAU, Biomes.BADLANDS, Biomes.WOODED_BADLANDS_PLATEAU,
-//			Biomes.BADLANDS_PLATEAU, Biomes.WARM_OCEAN, Biomes.LUKEWARM_OCEAN, Biomes.COLD_OCEAN,
-//			Biomes.DEEP_WARM_OCEAN, Biomes.DEEP_LUKEWARM_OCEAN, Biomes.DEEP_COLD_OCEAN, Biomes.SUNFLOWER_PLAINS,
-//			Biomes.DESERT_LAKES, Biomes.GRAVELLY_MOUNTAINS, Biomes.FLOWER_FOREST, Biomes.TAIGA_MOUNTAINS,
-//			Biomes.SWAMP_HILLS, Biomes.ICE_SPIKES, Biomes.MODIFIED_JUNGLE, Biomes.MODIFIED_JUNGLE_EDGE,
-//			Biomes.TALL_BIRCH_FOREST, Biomes.TALL_BIRCH_HILLS, Biomes.DARK_FOREST_HILLS, Biomes.GIANT_SPRUCE_TAIGA,
-//			Biomes.GIANT_SPRUCE_TAIGA_HILLS, Biomes.MODIFIED_GRAVELLY_MOUNTAINS, Biomes.SHATTERED_SAVANNA,
-//			Biomes.SHATTERED_SAVANNA_PLATEAU, Biomes.ERODED_BADLANDS, Biomes.MODIFIED_WOODED_BADLANDS_PLATEAU,
-//			Biomes.MODIFIED_BADLANDS_PLATEAU
+	protected static final List<Biome> BIOMES = ImmutableList.<Biome>of(BuiltinBiomes.PLAINS,
+//			BuiltinBiomes.PLAINS
+			BuiltinRegistries.BIOME.get(BiomeKeys.OCEAN), BuiltinRegistries.BIOME.get(BiomeKeys.DESERT),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MOUNTAINS), BuiltinRegistries.BIOME.get(BiomeKeys.FOREST),
+			BuiltinRegistries.BIOME.get(BiomeKeys.TAIGA), BuiltinRegistries.BIOME.get(BiomeKeys.SWAMP),
+			BuiltinRegistries.BIOME.get(BiomeKeys.RIVER), BuiltinRegistries.BIOME.get(BiomeKeys.FROZEN_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.FROZEN_RIVER),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MUSHROOM_FIELDS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MUSHROOM_FIELD_SHORE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.BEACH), BuiltinRegistries.BIOME.get(BiomeKeys.DESERT_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.WOODED_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.TAIGA_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MOUNTAIN_EDGE), BuiltinRegistries.BIOME.get(BiomeKeys.JUNGLE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.JUNGLE_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.JUNGLE_EDGE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DEEP_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.STONE_SHORE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.BIRCH_FOREST),
+			BuiltinRegistries.BIOME.get(BiomeKeys.BIRCH_FOREST_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DARK_FOREST),
+			BuiltinRegistries.BIOME.get(BiomeKeys.GIANT_TREE_TAIGA),
+			BuiltinRegistries.BIOME.get(BiomeKeys.GIANT_TREE_TAIGA_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.WOODED_MOUNTAINS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SAVANNA),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SAVANNA_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.BADLANDS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.WOODED_BADLANDS_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.BADLANDS_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.WARM_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.LUKEWARM_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.COLD_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DEEP_WARM_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DEEP_LUKEWARM_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DEEP_COLD_OCEAN),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SUNFLOWER_PLAINS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DESERT_LAKES),
+			BuiltinRegistries.BIOME.get(BiomeKeys.GRAVELLY_MOUNTAINS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.FLOWER_FOREST),
+			BuiltinRegistries.BIOME.get(BiomeKeys.TAIGA_MOUNTAINS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SWAMP_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.ICE_SPIKES),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_JUNGLE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_JUNGLE_EDGE),
+			BuiltinRegistries.BIOME.get(BiomeKeys.TALL_BIRCH_FOREST),
+			BuiltinRegistries.BIOME.get(BiomeKeys.TALL_BIRCH_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.DARK_FOREST_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.GIANT_SPRUCE_TAIGA),
+			BuiltinRegistries.BIOME.get(BiomeKeys.GIANT_SPRUCE_TAIGA_HILLS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_GRAVELLY_MOUNTAINS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SHATTERED_SAVANNA),
+			BuiltinRegistries.BIOME.get(BiomeKeys.SHATTERED_SAVANNA_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.ERODED_BADLANDS),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_WOODED_BADLANDS_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_BADLANDS_PLATEAU)
 			);
 
 ////	public static final Codec<BiosphereBiomeSource> CODEC = Codec.mapPair(Identifier.CODEC.flatXmap(
 ////			identifier -> Optional.<MultiNoiseBiomeSource.Preset>ofNullable(this.Preset.field_24724.get(identifier))
 ////					.map(DataResult::success).orElseGet(() -> DataResult.error("Unknown preset: " + identifier)),
-////			preset -> DataResult.success(preset.id)).fieldOf("preset"), Codec.LONG.fieldOf("seed")).stable();
+//BuiltinRegistries.BIOME.get(BuiltinBiomesreset -> DataResult.success(preset.id)).fieldOf("preset"), Codec.LONG.fieldOf("seed")).stable();
 //
 	protected BiospheresBiomeSource(long seed) {
 		super(BIOMES);
@@ -85,10 +128,10 @@ public class BiospheresBiomeSource extends BiomeSource {
 ////		System.out.println("AAAAAAAAAA");
 
 //		BlockPos centerPos 
-		if (this.getDistanceFromSphere(biomeX+1, biomeZ+1) < this.sphereRadius+6) {
+		if (this.getDistanceFromSphere(biomeX + 1, biomeZ + 1) < this.sphereRadius + 6) {
 			return this.getBiomeForSphere(biomeX, biomeZ);
 		}
-		return Biomes.THE_VOID;
+		return BuiltinBiomes.THE_VOID;
 //		return this.biomeSampler.sample(biomeX, biomeZ);
 //		return Biomes.OCEAN;
 	}
