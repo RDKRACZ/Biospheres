@@ -1,9 +1,11 @@
 package xyz.coolsa.biosphere;
 
 import java.util.Random;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.block.BlockState;
@@ -64,13 +66,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					Codec.INT.fieldOf("shore_radius").forGetter((generator) -> generator.shoreRadius))
 			.apply(instance, instance.stable(BiospheresChunkGenerator::new)));
 
-	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed, int sphereDistance, int sphereRadius, int lakeRadius, int shoreRadius) {
+	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed, int sphereDistance, int sphereRadius,
+			int lakeRadius, int shoreRadius) {
 		super(biomeSource, new StructuresConfig(false));
 		this.biomeSource = biomeSource;
 		this.seed = seed;
 		this.sphereDistance = sphereDistance;
 		this.sphereRadius = sphereRadius;
-		this.oreSphereRadius = 8; //TODO: add in ore spheres.
+		this.oreSphereRadius = 8; // TODO: add in ore spheres. also set to -ve to do no ore spheres
 		this.lakeRadius = lakeRadius;
 		this.shoreRadius = shoreRadius;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
@@ -80,12 +83,11 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.chunkRandom = new ChunkRandom(this.seed);
 		this.chunkRandom.consume(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
-		// TODO Auto-generated constructor stub
 	}
-
+	
 	@Override
 	public void buildSurface(ChunkRegion region, Chunk chunk) {
-		BlockPos centerPos = this.getNearestCenterSphere(chunk.getPos().getCenterBlockPos());
+		BlockPos centerPos = this.getNearestCenterSphere(chunk.getPos().getStartPos());
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		for (BlockPos pos : BlockPos.iterate(chunk.getPos().getStartX(), 0, chunk.getPos().getStartZ(),
 				chunk.getPos().getEndX(), 0, chunk.getPos().getEndZ())) {
@@ -109,39 +111,65 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public void populateNoise(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
+		// get the starting position of the chunk we will generate.
 		ChunkPos chunkPos = chunk.getPos();
+		// also get the current working block.
 		BlockPos.Mutable current = new BlockPos.Mutable();
+		// get the actual starting x position of the chunk.
 		int xPos = chunkPos.getStartX();
+		// get the actual starting z position of the chunk.
 		int zPos = chunkPos.getStartZ();
-		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getCenterBlockPos());
-//		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getCenterBlockPos());
+		// find the center of the nearest sphere.
+		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getStartPos());
+		// TODO: ore sphere conditional generator.
+//		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getStartPos()); 
+		// get the block that should be at the center.
 		BlockState fluidBlock = this.getLakeBlock(centerPos);
+		// begin keeping track of the heightmap.
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getHeightmap(Type.WORLD_SURFACE_WG);
+		// now lets iterate over every every column in the chunk.
 		for (final BlockPos pos : BlockPos.iterate(xPos, 0, zPos, xPos + 15, 0, zPos + 15)) {
+			// we set our current position to the current column.
 			current.set(pos);
+			// now get the 2d distance to the center block.
 			double radialDistance = Math
 					.sqrt(pos.getSquaredDistance(centerPos.getX(), pos.getY(), centerPos.getZ(), false));
+			// if we are inside of said distance, we know we can generate at some positions
+			// inside this chunk.
 			if (radialDistance <= this.sphereRadius) {
-				double noise = this.noiseSampler.sample(pos.getX() / 8.0, pos.getZ() / 8.0, 1 / 16.0, 1 / 16.0) / 8;
+				// so we sample the noise height.
+				double noise = this.noiseSampler.sample(pos.getX() / 8.0, pos.getZ() / 8.0, 1 / 16.0, 1 / 16.0) / 16;
+				// we also calculate the "height" of the column of the sphere.
 				double sphereHeight = Math.sqrt(this.sphereRadius * this.sphereRadius
 						- (centerPos.getX() - pos.getX()) * (centerPos.getX() - pos.getX())
 						- (pos.getZ() - centerPos.getZ()) * (pos.getZ() - centerPos.getZ()));
+				// now lets iterate over ever position inside of this sphere.
 				for (int y = centerPos.getY() - (int) sphereHeight; y <= sphereHeight + centerPos.getY(); y++) {
-					double newRadialDistance = Math
-							.sqrt(centerPos.getSquaredDistance(pos.getX(), y, pos.getZ(), false));
+					// calculate the radial distance for lake gen.
+					double lakeDistance = Math.sqrt(centerPos.getSquaredDistance(pos.getX(), y, pos.getZ(), false));
+					// calculate the radial distance for lake gen in 2d space.
+					double lakeDistance2d = Math
+							.sqrt(centerPos.getSquaredDistance(pos.getX(), centerPos.getY(), pos.getZ(), false));
+
+					// also lets do some math for our noise generator.
 					double noiseTemp = (noise + y / centerPos.getY());
+					// by default, the block is air.
 					BlockState blockState = Blocks.AIR.getDefaultState();
+					// if we are below the noise gradient, we can set this block to stone!
 					if (y * noiseTemp < centerPos.getY()) {
 						blockState = this.defaultBlock;
 					}
-					if (blockState.equals(this.defaultBlock) && newRadialDistance <= this.lakeRadius
+					// now lets check if we can do our lake gen.
+					if ((blockState.equals(this.defaultBlock) && (lakeDistance2d <= this.lakeRadius))
 							&& !fluidBlock.equals(Blocks.AIR.getDefaultState())) {
-						if (y * noiseTemp >= centerPos.getY() - 1) {
+						// if we are above the height and noise value, we will generate air.
+						if (y >= centerPos.getY() && !fluidBlock.equals(Blocks.STONE.getDefaultState())) {
 							blockState = Blocks.AIR.getDefaultState();
-						} else if (fluidBlock.equals(this.defaultFluid)) {
-							blockState = fluidBlock;
-						} else if (fluidBlock.equals(Blocks.LAVA.getDefaultState())) {
+						}
+						// otherwise, we are inside of a valid position, so we go ahead and generate our
+						// fluids.
+						else if (lakeDistance <= this.lakeRadius) {
 							blockState = fluidBlock;
 						}
 					}
@@ -180,10 +208,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	public BlockState getLakeBlock(BlockPos center) {
 		this.chunkRandom.setTerrainSeed(center.getX(), center.getZ());
 		int rng = this.chunkRandom.nextInt(10);
-		BlockState state = Blocks.AIR.getDefaultState();
-		if (rng >= 5 && rng <= 9)
+		BlockState state = Blocks.STONE.getDefaultState();
+		if (rng >= 1 && rng <= 8)
 			state = this.defaultFluid;
-		else if (rng == 10) {
+		else if (rng == 9) {
 			state = Blocks.LAVA.getDefaultState();
 		}
 		return state;
@@ -191,7 +219,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public ChunkGenerator withSeed(long seed) {
-		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereDistance, this.sphereRadius, this.lakeRadius, this.shoreRadius);
+		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereDistance,
+				this.sphereRadius, this.lakeRadius, this.shoreRadius);
 	}
 
 	@Override
@@ -249,7 +278,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //			}
 //		}
 //		if(runs > 9) {
-		this.finishBiospheres(region);
+//		this.finishBiospheres(region);
 //		}
 	}
 
