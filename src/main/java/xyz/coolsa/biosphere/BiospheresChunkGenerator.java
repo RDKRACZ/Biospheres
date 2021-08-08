@@ -141,7 +141,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //					blockState = this.defaultBlock;
 //			}
 		}
-		return null;
+		return CompletableFuture.completedFuture(chunk);
 	}
 
 	@Override
