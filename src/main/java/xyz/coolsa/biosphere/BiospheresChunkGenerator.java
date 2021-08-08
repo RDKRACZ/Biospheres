@@ -1,6 +1,8 @@
 package xyz.coolsa.biosphere;
 
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.IntStream;
 
 import com.mojang.serialization.Codec;
@@ -18,11 +20,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
 import net.minecraft.util.math.noise.OctaveSimplexNoiseSampler;
 import net.minecraft.util.registry.Registry;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.ChunkRegion;
-import net.minecraft.world.Heightmap;
+import net.minecraft.world.*;
 import net.minecraft.world.Heightmap.Type;
-import net.minecraft.world.WorldAccess;
 //import net.minecraft.world.biome.Biome;
 //import net.minecraft.world.biome.Biomes;
 import net.minecraft.world.biome.source.BiomeAccess;
@@ -78,42 +77,30 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
 		this.chunkRandom = new ChunkRandom(this.seed);
-		this.chunkRandom.consume(1000);
+		chunkRandom.skip(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
 		// TODO Auto-generated constructor stub
 	}
 
 	@Override
 	public void buildSurface(ChunkRegion region, Chunk chunk) {
-		BlockPos centerPos = this.getNearestCenterSphere(chunk.getPos().getCenterBlockPos());
+		BlockPos centerPos = this.getNearestCenterSphere(chunk.getPos().getCenterAtY(0));
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		for (BlockPos pos : BlockPos.iterate(chunk.getPos().getStartX(), 0, chunk.getPos().getStartZ(),
 				chunk.getPos().getEndX(), 0, chunk.getPos().getEndZ())) {
-			region.getBiome(current.set(pos)).buildSurface(this.chunkRandom, chunk, pos.getX(), pos.getZ(),
-					centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, this.seed);
+			region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+					centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
 		}
 
 	}
 
 	@Override
-	public BlockView getColumnSample(int x, int z) {
-		// TODO Auto-generated method stub
-		return new VerticalBlockSample(new BlockState[0]);
-	}
-
-	@Override
-	public int getHeight(int x, int z, Type heightmapType) {
-		// TODO Auto-generated method stub
-		return 64;
-	}
-
-	@Override
-	public void populateNoise(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
+	public CompletableFuture<Chunk> populateNoise(Executor world, StructureAccessor accessor, Chunk chunk) {
 		ChunkPos chunkPos = chunk.getPos();
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		int xPos = chunkPos.getStartX();
 		int zPos = chunkPos.getStartZ();
-		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getCenterBlockPos());
+		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getCenterAtY(0));
 //		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getCenterBlockPos());
 		BlockState fluidBlock = this.getLakeBlock(centerPos);
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
@@ -154,6 +141,19 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //					blockState = this.defaultBlock;
 //			}
 		}
+		return null;
+	}
+
+	@Override
+	public int getHeight(int x, int z, Type heightmap, HeightLimitView world) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	public BlockPos getNearestCenterSphere(BlockPos pos) {
@@ -269,7 +269,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	}
 
 	public void finishBiospheres(ChunkRegion region) {
-		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
+		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7,

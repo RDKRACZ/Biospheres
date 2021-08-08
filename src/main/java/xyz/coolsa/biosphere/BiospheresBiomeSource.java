@@ -102,7 +102,8 @@ public class BiospheresBiomeSource extends BiomeSource {
 			BuiltinRegistries.BIOME.get(BiomeKeys.SHATTERED_SAVANNA_PLATEAU),
 			BuiltinRegistries.BIOME.get(BiomeKeys.ERODED_BADLANDS),
 			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_WOODED_BADLANDS_PLATEAU),
-			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_BADLANDS_PLATEAU)
+			BuiltinRegistries.BIOME.get(BiomeKeys.MODIFIED_BADLANDS_PLATEAU),
+			BuiltinRegistries.BIOME.get(BiomeKeys.LUSH_CAVES)
 			);
 
 ////	public static final Codec<BiosphereBiomeSource> CODEC = Codec.mapPair(Identifier.CODEC.flatXmap(
