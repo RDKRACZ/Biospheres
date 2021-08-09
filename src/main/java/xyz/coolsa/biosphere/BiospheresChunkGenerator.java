@@ -24,6 +24,7 @@ import net.minecraft.world.*;
 import net.minecraft.world.Heightmap.Type;
 //import net.minecraft.world.biome.Biome;
 //import net.minecraft.world.biome.Biomes;
+import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.FixedBiomeSource;
@@ -210,7 +211,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
 //						Blocks.REDSTONE_ORE.getDefaultState(), 8)).createDecoratedFeature(
 //								Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(8, 96, 0, 16))));
-//		if (!biome.equals(Biomes.THE_VOID)) {
+//		if (!biome.equals(BiomeKeys.THE_VOID)) {
 //			biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES, Feature.ORE
 //					.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
 //							Blocks.LAPIS_ORE.getDefaultState(), 7))

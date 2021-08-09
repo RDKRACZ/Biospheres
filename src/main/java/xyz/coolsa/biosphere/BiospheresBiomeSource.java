@@ -111,11 +111,11 @@ public class BiospheresBiomeSource extends BiomeSource {
 ////					.map(DataResult::success).orElseGet(() -> DataResult.error("Unknown preset: " + identifier)),
 //BuiltinRegistries.BIOME.get(BuiltinBiomesreset -> DataResult.success(preset.id)).fieldOf("preset"), Codec.LONG.fieldOf("seed")).stable();
 //
-	protected BiospheresBiomeSource(long seed) {
+public BiospheresBiomeSource(long seed) {
 		super(BIOMES);
 		this.seed = seed;
-		this.sphereDistance = 128;
-		this.sphereRadius = 32;
+		this.sphereDistance = Biospheres.config.sphereDistance;
+		this.sphereRadius = Biospheres.config.sphereRadius;
 		this.chunkRandom = new ChunkRandom(seed);
 		// TODO Auto-generated constructor stub
 	}
