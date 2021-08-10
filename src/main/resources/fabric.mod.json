@@ -6,11 +6,12 @@
   "name": "Biospheres",
   "description": "Based off the original mod by Risugami, but implemented with fabric",
   "authors": [
+    "FarlanderCraft",
     "Coolsa"
   ],
   "contact": {
-    "homepage": "",
-    "sources": "https://github.com/coolsa/Modfest1.16"
+    "homepage": "https://www.youtube.com/channel/UCNW_V3BfkWXcMtCEIGQyaBA",
+    "sources": "https://github.com/FarLanderCraft/Biospheres"
   },
 
   "license": "LGPL-3.0",
