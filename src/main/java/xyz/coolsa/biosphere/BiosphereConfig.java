@@ -1,15 +1,5 @@
+
 package xyz.coolsa.biosphere;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import net.minecraft.client.world.GeneratorType;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class BiosphereConfig {
     public int sphereDistance;
