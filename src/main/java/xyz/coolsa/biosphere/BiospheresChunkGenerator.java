@@ -1,6 +1,8 @@
 package xyz.coolsa.biosphere;
 
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -8,9 +10,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.biome.v1.BiomeModification;
+import net.fabricmc.fabric.api.biome.v1.BiomeModificationContext;
+import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
+import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.structure.StructureManager;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.crash.CrashException;
 import net.minecraft.util.crash.CrashReport;
 import net.minecraft.util.math.BlockPos;
@@ -19,14 +26,14 @@ import net.minecraft.util.math.Position;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
 import net.minecraft.util.math.noise.OctaveSimplexNoiseSampler;
+import net.minecraft.util.registry.BuiltinRegistries;
 import net.minecraft.util.registry.Registry;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.ChunkRegion;
-import net.minecraft.world.Heightmap;
+import net.minecraft.util.registry.RegistryKey;
+import net.minecraft.world.*;
 import net.minecraft.world.Heightmap.Type;
-import net.minecraft.world.WorldAccess;
 //import net.minecraft.world.biome.Biome;
 //import net.minecraft.world.biome.Biomes;
+import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.FixedBiomeSource;
@@ -34,14 +41,17 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
+import net.minecraft.world.gen.YOffset;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
 import net.minecraft.world.gen.decorator.Decorator;
 import net.minecraft.world.gen.decorator.RangeDecoratorConfig;
+import net.minecraft.world.gen.feature.ConfiguredFeature;
 import net.minecraft.world.gen.feature.DefaultBiomeFeatures;
 import net.minecraft.world.gen.feature.Feature;
 import net.minecraft.world.gen.feature.OreFeatureConfig;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.StructuresConfig;
+import net.minecraft.world.gen.heightprovider.UniformHeightProvider;
 
 public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final long seed;
@@ -81,7 +91,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
 		this.chunkRandom = new ChunkRandom(this.seed);
-		this.chunkRandom.consume(1000);
+		this.chunkRandom.skip(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
 	}
 	
@@ -91,26 +101,26 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		for (BlockPos pos : BlockPos.iterate(chunk.getPos().getStartX(), 0, chunk.getPos().getStartZ(),
 				chunk.getPos().getEndX(), 0, chunk.getPos().getEndZ())) {
-			region.getBiome(current.set(pos)).buildSurface(this.chunkRandom, chunk, pos.getX(), pos.getZ(),
-					centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, this.seed);
+			region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+					centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
 		}
 
 	}
 
 	@Override
-	public BlockView getColumnSample(int x, int z) {
+	public int getHeight(int x, int z, Type heightmap, HeightLimitView world) {
 		// TODO Auto-generated method stub
-		return new VerticalBlockSample(new BlockState[0]);
+		return 0;
 	}
 
 	@Override
-	public int getHeight(int x, int z, Type heightmapType) {
+	public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world) {
 		// TODO Auto-generated method stub
-		return 64;
+		return null;
 	}
 
 	@Override
-	public void populateNoise(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
+	public CompletableFuture<Chunk> populateNoise(Executor world, StructureAccessor accessor, Chunk chunk) {
 		// get the starting position of the chunk we will generate.
 		ChunkPos chunkPos = chunk.getPos();
 		// also get the current working block.
@@ -182,6 +192,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //					blockState = this.defaultBlock;
 //			}
 		}
+		return CompletableFuture.completedFuture(chunk);
 	}
 
 	public BlockPos getNearestCenterSphere(BlockPos pos) {
@@ -229,8 +240,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
-//		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
-//		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
+		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
+
+//		BiomeModifications.addFeature(BiomeSelectors.foundInOverworld(), GenerationStep.Feature.UNDERGROUND_ORES, Biospheres.oreIronBiosphere);
+
 //		biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES,
 //				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
 //						Blocks.IRON_ORE.getDefaultState(), 9)).createDecoratedFeature(
@@ -278,7 +291,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 //			}
 //		}
 //		if(runs > 9) {
-//		this.finishBiospheres(region);
+		this.finishBiospheres(region);
 //		}
 	}
 
@@ -298,7 +311,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	}
 
 	public void finishBiospheres(ChunkRegion region) {
-		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
+		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7,

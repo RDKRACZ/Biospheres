@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "xyz.coolsa.biosphere.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "GeneratorTypeMixin"
+  ],
+  "client": [
+
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
