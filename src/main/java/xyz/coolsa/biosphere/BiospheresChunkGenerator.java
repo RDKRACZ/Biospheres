@@ -1,57 +1,34 @@
 package xyz.coolsa.biosphere;
 
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.function.Function;
-import java.util.stream.IntStream;
-
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import net.fabricmc.fabric.api.biome.v1.BiomeModification;
-import net.fabricmc.fabric.api.biome.v1.BiomeModificationContext;
-import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
-import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.structure.StructureManager;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.crash.CrashException;
-import net.minecraft.util.crash.CrashReport;
+import net.minecraft.state.property.Properties;
+import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Position;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
-import net.minecraft.util.math.noise.OctaveSimplexNoiseSampler;
-import net.minecraft.util.registry.BuiltinRegistries;
 import net.minecraft.util.registry.Registry;
-import net.minecraft.util.registry.RegistryKey;
-import net.minecraft.world.*;
+import net.minecraft.world.ChunkRegion;
+import net.minecraft.world.HeightLimitView;
+import net.minecraft.world.Heightmap;
 import net.minecraft.world.Heightmap.Type;
-//import net.minecraft.world.biome.Biome;
-//import net.minecraft.world.biome.Biomes;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
-import net.minecraft.world.biome.source.FixedBiomeSource;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
-import net.minecraft.world.gen.YOffset;
-import net.minecraft.world.gen.chunk.VerticalBlockSample;
-import net.minecraft.world.gen.decorator.Decorator;
-import net.minecraft.world.gen.decorator.RangeDecoratorConfig;
-import net.minecraft.world.gen.feature.ConfiguredFeature;
-import net.minecraft.world.gen.feature.DefaultBiomeFeatures;
-import net.minecraft.world.gen.feature.Feature;
-import net.minecraft.world.gen.feature.OreFeatureConfig;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.StructuresConfig;
-import net.minecraft.world.gen.heightprovider.UniformHeightProvider;
+import net.minecraft.world.gen.chunk.VerticalBlockSample;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.stream.IntStream;
 
 public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final long seed;
@@ -64,9 +41,12 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final ChunkRandom chunkRandom;
 	protected final OctavePerlinNoiseSampler noiseSampler;
 	protected final BlockState defaultBlock;
+	protected final BlockState defaultNetherBlock;
 	protected final BlockState defaultFluid;
 	protected final BlockState defaultBridge;
 	protected final BlockState defaultEdge;
+	protected final BlockState defaultEdgeX;
+	protected final BlockState defaultEdgeZ;
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.CODEC.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
 					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed),
@@ -87,9 +67,12 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.lakeRadius = lakeRadius;
 		this.shoreRadius = shoreRadius;
 		this.defaultBlock = Blocks.STONE.getDefaultState();
+		this.defaultNetherBlock = Blocks.NETHERRACK.getDefaultState();
 		this.defaultFluid = Blocks.WATER.getDefaultState();
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
+		this.defaultEdgeX = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true).with(Properties.WEST, true);
+		this.defaultEdgeZ = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true).with(Properties.SOUTH, true);
 		this.chunkRandom = new ChunkRandom(this.seed);
 		this.chunkRandom.skip(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
@@ -101,8 +84,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		for (BlockPos pos : BlockPos.iterate(chunk.getPos().getStartX(), 0, chunk.getPos().getStartZ(),
 				chunk.getPos().getEndX(), 0, chunk.getPos().getEndZ())) {
-			region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
-					centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
+
+			if (region.getBiome(centerPos).getCategory() == Biome.Category.NETHER){
+				region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+						centerPos.getY() * 2, 0.0625, this.defaultNetherBlock, this.defaultFluid, -10, 0, this.seed);
+			} else {
+				region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+						centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
+			}
 		}
 
 	}
@@ -132,9 +121,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		// find the center of the nearest sphere.
 		BlockPos centerPos = this.getNearestCenterSphere(chunkPos.getStartPos());
 		// TODO: ore sphere conditional generator.
-//		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getStartPos()); 
+		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getStartPos());
 		// get the block that should be at the center.
-		BlockState fluidBlock = this.getLakeBlock(centerPos);
+		BlockState fluidBlock = this.getLakeBlock(centerPos, chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos));
 		// begin keeping track of the heightmap.
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getHeightmap(Type.WORLD_SURFACE_WG);
@@ -145,6 +134,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 			// now get the 2d distance to the center block.
 			double radialDistance = Math
 					.sqrt(pos.getSquaredDistance(centerPos.getX(), pos.getY(), centerPos.getZ(), false));
+			double oreRadialDistance = Math
+					.sqrt(pos.getSquaredDistance(oreCenterPos.getX(), pos.getY(), oreCenterPos.getZ(), false));
 			// if we are inside of said distance, we know we can generate at some positions
 			// inside this chunk.
 			if (radialDistance <= this.sphereRadius) {
@@ -168,11 +159,15 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					BlockState blockState = Blocks.AIR.getDefaultState();
 					// if we are below the noise gradient, we can set this block to stone!
 					if (y * noiseTemp < centerPos.getY()) {
-						blockState = this.defaultBlock;
+						if (chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos).getCategory() == Biome.Category.NETHER) {
+							blockState = this.defaultNetherBlock;
+						} else {
+							blockState = this.defaultBlock;
+						}
 					}
 					// now lets check if we can do our lake gen.
-					if ((blockState.equals(this.defaultBlock) && (lakeDistance2d <= this.lakeRadius))
-							&& !fluidBlock.equals(Blocks.AIR.getDefaultState())) {
+					if (((blockState.equals(this.defaultBlock) || blockState.equals(this.defaultNetherBlock))
+							&& (lakeDistance2d <= this.lakeRadius))	&& !fluidBlock.equals(Blocks.AIR.getDefaultState())) {
 						// if we are above the height and noise value, we will generate air.
 						if (y >= centerPos.getY() && !fluidBlock.equals(Blocks.STONE.getDefaultState())) {
 							blockState = Blocks.AIR.getDefaultState();
@@ -188,9 +183,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					worldSurface.trackUpdate(pos.getX() & 0xF, y & 0xF, pos.getZ() & 0xF, blockState);
 				}
 			}
-//			if (oreRadialDistance <= this.oreSphereRadius) {
-//					blockState = this.defaultBlock;
-//			}
+			if (oreRadialDistance <= this.oreSphereRadius) {
+			//		blockState = this.defaultBlock;
+			}
 		}
 		return CompletableFuture.completedFuture(chunk);
 	}
@@ -216,10 +211,15 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		return new BlockPos(centerX + this.sphereDistance / 2, centerY, centerZ + this.sphereDistance / 2);
 	}
 
-	public BlockState getLakeBlock(BlockPos center) {
+	public BlockState getLakeBlock(BlockPos center, Biome biome) {
 		this.chunkRandom.setTerrainSeed(center.getX(), center.getZ());
 		int rng = this.chunkRandom.nextInt(10);
-		BlockState state = Blocks.STONE.getDefaultState();
+		BlockState state;
+		if (biome.getCategory() == Biome.Category.NETHER) {
+			state = Blocks.NETHERRACK.getDefaultState();
+		} else {
+			state = Blocks.STONE.getDefaultState();
+		}
 		if (rng >= 1 && rng <= 8)
 			state = this.defaultFluid;
 		else if (rng == 9) {
@@ -243,11 +243,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
 
 //		BiomeModifications.addFeature(BiomeSelectors.foundInOverworld(), GenerationStep.Feature.UNDERGROUND_ORES, Biospheres.oreIronBiosphere);
+		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
 
-//		biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES,
-//				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
-//						Blocks.IRON_ORE.getDefaultState(), 9)).createDecoratedFeature(
-//								Decorator.COUNT_RANGE.configure(new RangeDecoratorConfig(20, 32, 0, 128))));
+		//RangeDecoratorConfig(UniformHeightProvider.create(YOffset.aboveBottom(0), YOffset.fixed(15)))).spreadHorizontally().repeat(4);
+		//20, 32, 0, 128
 //		biome.addFeature(GenerationStep.Feature.UNDERGROUND_ORES,
 //				Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Target.NATURAL_STONE,
 //						Blocks.REDSTONE_ORE.getDefaultState(), 8)).createDecoratedFeature(
@@ -335,7 +334,11 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (y * noiseTemp >= centerPos.getY()) {
 						blockState = Blocks.GLASS.getDefaultState();
 					} else {
-						blockState = this.defaultBlock;
+						if (region.getBiome(chunkCenter).getCategory() == Biome.Category.NETHER) {
+							blockState = this.defaultNetherBlock;
+						} else {
+
+						}blockState = this.defaultBlock;
 					}
 					region.setBlockState(current.set(pos.getX(), y, pos.getZ()), blockState, 0);
 				}
@@ -375,8 +378,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (pos.getZ() <= centerPos.getZ() + 2 && pos.getZ() >= centerPos.getZ() - 2) {
 						if (pos.getX() > centerPos.getX()) {
 							this.fillBridgeSlice(
-									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current);
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
+									region, current, true);
+							// x axis
 						}
 					}
 					break;
@@ -387,8 +392,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (pos.getZ() <= centerPos.getZ() + 2 && pos.getZ() >= centerPos.getZ() - 2) {
 						if (pos.getX() < centerPos.getX()) {
 							this.fillBridgeSlice(
-									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current);
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
+									region, current, true);
+							// x axis
 						}
 					}
 					break;
@@ -399,8 +406,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (pos.getX() <= centerPos.getX() + 2 && pos.getX() >= centerPos.getX() - 2) {
 						if (pos.getZ() > centerPos.getZ()) {
 							this.fillBridgeSlice(
-									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current);
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
+									region, current, false);
+							// z axis
 						}
 					}
 					break;
@@ -411,8 +420,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (pos.getX() <= centerPos.getX() + 2 && pos.getX() >= centerPos.getX() - 2) {
 						if (pos.getZ() < centerPos.getZ()) {
 							this.fillBridgeSlice(
-									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()), region,
-									current);
+									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
+									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
+									region, current, false);
+							// z axis
 						}
 					}
 					break;
@@ -421,15 +432,39 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 	}
 
-	public void fillBridgeSlice(BlockPos pos, ChunkRegion region, BlockPos.Mutable current) {
+	public void fillBridgeSlice(BlockPos pos, BlockPos centerPos, ChunkRegion region, BlockPos.Mutable current, boolean xa) {
 		int x = pos.getX();
 		int y = pos.getY();
 		int z = pos.getZ();
+		int cx = centerPos.getX();
+		int cz = centerPos.getZ();
 		region.setBlockState(current.set(x, y - 1, z), this.defaultBridge, 0);
 		region.setBlockState(current.set(x, y, z), Blocks.AIR.getDefaultState(), 0);
+		if(xa) {
+			region.setBlockState(current.set(x, y, cz+2), this.defaultEdgeX, 0);
+			region.setBlockState(current.set(x, y, cz-2), this.defaultEdgeX, 0);
+		} else {
+			region.setBlockState(current.set(cx+2, y, z), this.defaultEdgeZ, 0);
+			region.setBlockState(current.set(cx-2, y, z), this.defaultEdgeZ, 0);
+		}
 		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 2, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 3, z), Blocks.AIR.getDefaultState(), 0);
+
+
+	}
+
+	public void fillBridgeEdge(BlockPos pos, ChunkRegion region, BlockPos.Mutable current, boolean xa) {
+		int x = pos.getX();
+		int y = pos.getY();
+		int z = pos.getZ();
+		/*if (xa) {
+			region.setBlockState(current.set(x, y, z - 3), this.defaultEdge, 0);
+			region.setBlockState(current.set(x, y, z + 3), this.defaultEdge, 0);
+		} else {
+			region.setBlockState(current.set(x - 3, y, z), this.defaultEdge, 0);
+			region.setBlockState(current.set(x + 3, y, z), this.defaultEdge, 0);
+		}*/
 	}
 
 	@Override

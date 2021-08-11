@@ -31,8 +31,8 @@ public class Biospheres implements ModInitializer {
 		}
 	};
 
-	//public static ConfiguredFeature<?, ?> ORE_IRON_BIOSPHERE = Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Rules.BASE_STONE_OVERWORLD, Blocks.IRON_ORE.getDefaultState(), 9)).range(new RangeDecoratorConfig(UniformHeightProvider.create(YOffset.aboveBottom(0), YOffset.fixed(192)))).spreadHorizontally().repeat(35);
-	//public static RegistryKey<ConfiguredFeature<?, ?>> oreIronBiosphere = RegistryKey.of(Registry.CONFIGURED_FEATURE_KEY, new Identifier("biosphere", "ore_iron_biosphere"));
+	public static ConfiguredFeature<?, ?> ORE_IRON_BIOSPHERE = Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Rules.BASE_STONE_OVERWORLD, Blocks.IRON_ORE.getDefaultState(), 9)).range(new RangeDecoratorConfig(UniformHeightProvider.create(YOffset.aboveBottom(0), YOffset.fixed(192)))).spreadHorizontally().repeat(35);
+	public static RegistryKey<ConfiguredFeature<?, ?>> oreIronBiosphere = RegistryKey.of(Registry.CONFIGURED_FEATURE_KEY, new Identifier("biosphere", "ore_iron_biosphere"));
 
 	@Override
 	public void onInitialize() {
@@ -42,7 +42,7 @@ public class Biospheres implements ModInitializer {
 		Registry.register(Registry.CHUNK_GENERATOR, new Identifier("coolsa","biosphere"), BiospheresChunkGenerator.CODEC);
 		Registry.register(Registry.BIOME_SOURCE, new Identifier("coolsa","biosphere_biomes"), BiospheresBiomeSource.CODEC);
 
-		//Registry.register(BuiltinRegistries.CONFIGURED_FEATURE, oreIronBiosphere.getValue(), ORE_IRON_BIOSPHERE);
+		Registry.register(BuiltinRegistries.CONFIGURED_FEATURE, oreIronBiosphere.getValue(), ORE_IRON_BIOSPHERE);
 
 		GeneratorTypeMixin.getValues().add(BioSphere);
 		System.out.println("Loaded Biospheres Mod!");

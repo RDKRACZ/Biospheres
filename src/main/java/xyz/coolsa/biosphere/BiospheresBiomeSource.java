@@ -56,11 +56,15 @@ public class BiospheresBiomeSource extends BiomeSource {
 	//for the biomes, should i just clone every single one, register them as "biosphere:*biome*", and then generate with those?
 	//so we can do ores and stuff? that seems to be one of the better ideas i would say...
 	protected static final List<RegistryKey<Biome>> BIOMES = ImmutableList.<RegistryKey<Biome>>of(
-			BiomeKeys.PLAINS
-			,BiomeKeys.FOREST
-			,BiomeKeys.BADLANDS
-			,BiomeKeys.BEACH
-		);
+		BiomeKeys.PLAINS
+		,BiomeKeys.FOREST
+		,BiomeKeys.BADLANDS
+		,BiomeKeys.BEACH
+		,BiomeKeys.JUNGLE
+		,BiomeKeys.CRIMSON_FOREST
+		,BiomeKeys.WARPED_FOREST
+		,BiomeKeys.MUSHROOM_FIELDS
+	);
 
 ////	public static final Codec<BiosphereBiomeSource> CODEC = Codec.mapPair(Identifier.CODEC.flatXmap(
 ////			identifier -> Optional.<MultiNoiseBiomeSource.Preset>ofNullable(this.Preset.field_24724.get(identifier))
