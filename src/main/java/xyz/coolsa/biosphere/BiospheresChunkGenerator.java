@@ -61,7 +61,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		super(biomeSource, new StructuresConfig(false));
 		this.biomeSource = biomeSource;
 		this.seed = seed;
-		this.sphereDistance = sphereDistance;
+		this.sphereDistance = sphereRadius * 4;
 		this.sphereRadius = sphereRadius;
 		this.oreSphereRadius = 8; // TODO: add in ore spheres. also set to -ve to do no ore spheres
 		this.lakeRadius = lakeRadius;
@@ -93,7 +93,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 						centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
 			}
 		}
-
 	}
 
 	@Override
@@ -197,7 +196,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int centerZ = (int) Math.round(zPos / (double) this.sphereDistance) * this.sphereDistance;
 		this.chunkRandom.setTerrainSeed(centerX, centerZ);
 		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat() % 1.0) - 0.5, 3) + 0.5)
-				* (256 - this.sphereRadius * 4)) + this.sphereRadius * 2;
+				* (this.sphereRadius * 2 - this.sphereRadius * 4)) + this.sphereRadius * 2;
 		return new BlockPos(centerX, centerY, centerZ);
 	}
 
@@ -230,7 +229,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public ChunkGenerator withSeed(long seed) {
-		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereDistance,
+		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereRadius * 4,
 				this.sphereRadius, this.lakeRadius, this.shoreRadius);
 	}
 
