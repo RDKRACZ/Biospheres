@@ -72,7 +72,6 @@ public class BiospheresBiomeSource extends BiomeSource {
 		,BiomeKeys.FLOWER_FOREST
 		,BiomeKeys.SNOWY_TAIGA
 		,BiomeKeys.TAIGA
-		,BiomeKeys.LUSH_CAVES
 		,BiomeKeys.SWAMP
 		//,BiomeKeys.MOUNTAINS
 		,BiomeKeys.NETHER_WASTES

@@ -10,10 +10,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.world.BlockView;
 import net.minecraft.world.ChunkRegion;
-import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.Heightmap.Type;
+import net.minecraft.world.WorldAccess;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.biome.source.BiomeSource;
@@ -74,7 +75,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.defaultEdgeX = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true).with(Properties.WEST, true);
 		this.defaultEdgeZ = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true).with(Properties.SOUTH, true);
 		this.chunkRandom = new ChunkRandom(this.seed);
-		this.chunkRandom.skip(1000);
+		this.chunkRandom.consume(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
 	}
 	
@@ -86,29 +87,28 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				chunk.getPos().getEndX(), 0, chunk.getPos().getEndZ())) {
 
 			if (region.getBiome(centerPos).getCategory() == Biome.Category.NETHER){
-				region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
-						centerPos.getY() * 2, 0.0625, this.defaultNetherBlock, this.defaultFluid, -10, 0, this.seed);
+				region.getBiome(current.set(pos)).buildSurface(this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+						centerPos.getY() * 4, 0.0625, this.defaultNetherBlock, this.defaultFluid, -10, this.seed);
 			} else {
-				region.getBiome(current.set(pos)).buildSurface((Random) this.chunkRandom, chunk, pos.getX(), pos.getZ(),
-						centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, 0, this.seed);
+				region.getBiome(current.set(pos)).buildSurface(this.chunkRandom, chunk, pos.getX(), pos.getZ(),
+						centerPos.getY() * 4, 0.0625, this.defaultBlock, this.defaultFluid, -10, this.seed);
 			}
 		}
 	}
 
 	@Override
-	public int getHeight(int x, int z, Type heightmap, HeightLimitView world) {
-		// TODO Auto-generated method stub
+	public int getHeight(int x, int z, Type heightmapType) {
 		return 0;
 	}
 
 	@Override
-	public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world) {
-		// TODO Auto-generated method stub
+	public BlockView getColumnSample(int x, int z) {
 		return null;
 	}
 
+
 	@Override
-	public CompletableFuture<Chunk> populateNoise(Executor world, StructureAccessor accessor, Chunk chunk) {
+	public void populateNoise(WorldAccess world, StructureAccessor accessor, Chunk chunk) {
 		// get the starting position of the chunk we will generate.
 		ChunkPos chunkPos = chunk.getPos();
 		// also get the current working block.
@@ -122,7 +122,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		// TODO: ore sphere conditional generator.
 		BlockPos oreCenterPos = this.getNearestOreSphere(chunkPos.getStartPos());
 		// get the block that should be at the center.
-		BlockState fluidBlock = this.getLakeBlock(centerPos, chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos));
+		BlockState fluidBlock = this.getLakeBlock(centerPos, chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos.x, centerPos.getY() ,chunkPos.z));
 		// begin keeping track of the heightmap.
 		Heightmap oceanHeight = chunk.getHeightmap(Type.OCEAN_FLOOR_WG);
 		Heightmap worldSurface = chunk.getHeightmap(Type.WORLD_SURFACE_WG);
@@ -158,7 +158,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					BlockState blockState = Blocks.AIR.getDefaultState();
 					// if we are below the noise gradient, we can set this block to stone!
 					if (y * noiseTemp < centerPos.getY()) {
-						if (chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos).getCategory() == Biome.Category.NETHER) {
+						if (chunk.getBiomeArray().getBiomeForNoiseGen(chunkPos.x, centerPos.getY(), chunkPos.z).getCategory() == Biome.Category.NETHER) {
 							blockState = this.defaultNetherBlock;
 						} else {
 							blockState = this.defaultBlock;
@@ -186,7 +186,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 			//		blockState = this.defaultBlock;
 			}
 		}
-		return CompletableFuture.completedFuture(chunk);
 	}
 
 	public BlockPos getNearestCenterSphere(BlockPos pos) {
@@ -239,7 +238,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public void generateFeatures(ChunkRegion region, StructureAccessor accessor) {
-		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
+		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
 
 //		BiomeModifications.addFeature(BiomeSelectors.foundInOverworld(), GenerationStep.Feature.UNDERGROUND_ORES, Biospheres.oreIronBiosphere);
 		Biome biome = this.biomeSource.getBiomeForNoiseGen(chunkCenter.getX() / 4 + 2, 2, chunkCenter.getZ() / 4 + 2);
@@ -309,7 +308,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	}
 
 	public void finishBiospheres(ChunkRegion region) {
-		BlockPos chunkCenter = new BlockPos(region.getCenterPos().x * 16, 0, region.getCenterPos().z * 16);
+		BlockPos chunkCenter = new BlockPos(region.getCenterChunkX() * 16, 0, region.getCenterChunkZ() * 16);
 		BlockPos.Mutable current = new BlockPos.Mutable();
 		BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7,
