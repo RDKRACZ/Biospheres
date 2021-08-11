@@ -56,7 +56,7 @@ public class BiospheresBiomeSource extends BiomeSource {
 	//for the biomes, should i just clone every single one, register them as "biosphere:*biome*", and then generate with those?
 	//so we can do ores and stuff? that seems to be one of the better ideas i would say...
 	protected static final List<RegistryKey<Biome>> BIOMES = ImmutableList.<RegistryKey<Biome>>of(
-		BiomeKeys.PLAINS
+		 BiomeKeys.PLAINS
 		,BiomeKeys.FOREST
 		,BiomeKeys.BADLANDS
 		,BiomeKeys.BEACH
@@ -64,6 +64,19 @@ public class BiospheresBiomeSource extends BiomeSource {
 		,BiomeKeys.CRIMSON_FOREST
 		,BiomeKeys.WARPED_FOREST
 		,BiomeKeys.MUSHROOM_FIELDS
+		,BiomeKeys.DESERT
+		,BiomeKeys.DARK_FOREST
+		,BiomeKeys.SNOWY_TUNDRA
+		,BiomeKeys.BAMBOO_JUNGLE
+		,BiomeKeys.BASALT_DELTAS
+		,BiomeKeys.FLOWER_FOREST
+		,BiomeKeys.SNOWY_TAIGA
+		,BiomeKeys.TAIGA
+		,BiomeKeys.LUSH_CAVES
+		,BiomeKeys.SWAMP
+		//,BiomeKeys.MOUNTAINS
+		,BiomeKeys.NETHER_WASTES
+		,BiomeKeys.ICE_SPIKES
 	);
 
 ////	public static final Codec<BiosphereBiomeSource> CODEC = Codec.mapPair(Identifier.CODEC.flatXmap(
@@ -74,8 +87,8 @@ public class BiospheresBiomeSource extends BiomeSource {
 	protected BiospheresBiomeSource(Registry<Biome> registry, long seed) {
 		super(ImmutableList.of());
 		this.seed = seed;
-		this.sphereDistance = Biospheres.config.sphereDistance;
-		this.sphereRadius = Biospheres.config.sphereRadius;
+		this.sphereDistance = Biospheres.bsconfig.sphereRadius * 4;
+		this.sphereRadius = Biospheres.bsconfig.sphereRadius;
 		this.chunkRandom = new ChunkRandom(seed);
 		this.registry = registry;
 		// TODO Auto-generated constructor stub

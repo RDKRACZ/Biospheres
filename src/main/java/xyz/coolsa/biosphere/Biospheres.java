@@ -1,5 +1,8 @@
 package xyz.coolsa.biosphere;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
@@ -22,20 +25,39 @@ import net.minecraft.world.gen.feature.OreFeatureConfig;
 import net.minecraft.world.gen.heightprovider.UniformHeightProvider;
 import xyz.coolsa.biosphere.mixin.GeneratorTypeMixin;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+
 public class Biospheres implements ModInitializer {
-	public static BiosphereConfig config = new BiosphereConfig(48, 5, 12);
+	public static BiosphereConfig bsconfig = new BiosphereConfig(48, 5, 12);
+	public Gson daData = new GsonBuilder().setPrettyPrinting().setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE).create();
+	Path configPath = Paths.get("config/biospheres.json");
 	public static final GeneratorType BioSphere = new GeneratorType("biosphere") {
 		@Override
-		protected ChunkGenerator getChunkGenerator(Registry<Biome> biomeRegistry, Registry<ChunkGeneratorSettings> chunkGeneratorSettingsRegistry, long seed) {
-			return new BiospheresChunkGenerator(new BiospheresBiomeSource(biomeRegistry, seed), seed, config.sphereDistance, config.sphereRadius, config.lakeRadius, config.shoreRadius);
+		public ChunkGenerator getChunkGenerator(Registry<Biome> biomeRegistry, Registry<ChunkGeneratorSettings> chunkGeneratorSettingsRegistry, long seed) {
+			return new BiospheresChunkGenerator(new BiospheresBiomeSource(biomeRegistry, seed), seed, bsconfig.sphereRadius * 4, bsconfig.sphereRadius, bsconfig.lakeRadius, bsconfig.shoreRadius);
 		}
 	};
 
 	//public static ConfiguredFeature<?, ?> ORE_IRON_BIOSPHERE = Feature.ORE.configure(new OreFeatureConfig(OreFeatureConfig.Rules.BASE_STONE_OVERWORLD, Blocks.IRON_ORE.getDefaultState(), 9)).range(new RangeDecoratorConfig(UniformHeightProvider.create(YOffset.aboveBottom(0), YOffset.fixed(192)))).spreadHorizontally().repeat(35);
 	//public static RegistryKey<ConfiguredFeature<?, ?>> oreIronBiosphere = RegistryKey.of(Registry.CONFIGURED_FEATURE_KEY, new Identifier("biosphere", "ore_iron_biosphere"));
-
+	public void saveDaData() {
+		try{
+			if (configPath.toFile().exists()) {
+				bsconfig = daData.fromJson(new String(Files.readAllBytes(configPath)), BiosphereConfig.class);
+			} else {
+				Files.write(configPath, Collections.singleton(daData.toJson(bsconfig)));
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	@Override
 	public void onInitialize() {
+		saveDaData();
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
