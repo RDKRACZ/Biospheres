@@ -46,6 +46,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final BlockState defaultBridge;
 	protected final BlockState defaultEdge;
 	protected final BlockState defaultEdgeX;
+	protected final BlockState defaultEdgeXStart0;
+	protected final BlockState defaultEdgeXStart1;
+	protected final BlockState defaultEdgeZStart0;
+	protected final BlockState defaultEdgeZStart1;
 	protected final BlockState defaultEdgeZ;
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.CODEC.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
@@ -72,6 +76,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
 		this.defaultEdgeX = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true).with(Properties.WEST, true);
+		this.defaultEdgeXStart0 = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true);
+		this.defaultEdgeXStart1 = Blocks.OAK_FENCE.getDefaultState().with(Properties.WEST, true);
+		this.defaultEdgeZStart0 = Blocks.OAK_FENCE.getDefaultState().with(Properties.SOUTH, true);
+		this.defaultEdgeZStart1 = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true);
 		this.defaultEdgeZ = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true).with(Properties.SOUTH, true);
 		this.chunkRandom = new ChunkRandom(this.seed);
 		this.chunkRandom.skip(1000);
@@ -195,7 +203,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int centerX = (int) Math.round(xPos / (double) this.sphereDistance) * this.sphereDistance;
 		int centerZ = (int) Math.round(zPos / (double) this.sphereDistance) * this.sphereDistance;
 		this.chunkRandom.setTerrainSeed(centerX, centerZ);
-		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat() % 1.0) - 0.5, 3) + 0.5)
+		int centerY = (int) ((Math.pow((this.chunkRandom.nextFloat() % 0.7) - 0.5, 3) + 0.5)
 				* (this.sphereRadius * 2 - this.sphereRadius * 4)) + this.sphereRadius * 2;
 		return new BlockPos(centerX, centerY, centerZ);
 	}
@@ -331,7 +339,11 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 						continue;
 					}
 					if (y * noiseTemp >= centerPos.getY()) {
-						blockState = Blocks.GLASS.getDefaultState();
+						if (region.getBiome(centerPos).getCategory() == Biome.Category.UNDERGROUND) {
+							blockState = Blocks.TINTED_GLASS.getDefaultState();
+						} else {
+							blockState = Blocks.GLASS.getDefaultState();
+						}
 					} else {
 						if (region.getBiome(chunkCenter).getCategory() == Biome.Category.NETHER) {
 							blockState = this.defaultNetherBlock;
@@ -379,7 +391,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
 									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
-									region, current, true);
+									region, current, true, true);
 							// x axis
 						}
 					}
@@ -393,7 +405,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
 									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
-									region, current, true);
+									region, current, true, false);
 							// x axis
 						}
 					}
@@ -407,7 +419,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
 									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
-									region, current, false);
+									region, current, false, true);
 							// z axis
 						}
 					}
@@ -421,7 +433,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							this.fillBridgeSlice(
 									new BlockPos(pos.getX(), slope * currentPos + centerPos.getY(), pos.getZ()),
 									new BlockPos(centerPos.getX(), slope * currentPos + centerPos.getY(), centerPos.getZ()),
-									region, current, false);
+									region, current, false, false);
 							// z axis
 						}
 					}
@@ -431,7 +443,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 	}
 
-	public void fillBridgeSlice(BlockPos pos, BlockPos centerPos, ChunkRegion region, BlockPos.Mutable current, boolean xa) {
+
+
+	public void fillBridgeSlice(BlockPos pos, BlockPos centerPos, ChunkRegion region, BlockPos.Mutable current, boolean isOnXAxis, boolean isPositive) {
 		int x = pos.getX();
 		int y = pos.getY();
 		int z = pos.getZ();
@@ -439,31 +453,37 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		int cz = centerPos.getZ();
 		region.setBlockState(current.set(x, y - 1, z), this.defaultBridge, 0);
 		region.setBlockState(current.set(x, y, z), Blocks.AIR.getDefaultState(), 0);
-		if(xa) {
-			region.setBlockState(current.set(x, y, cz+2), this.defaultEdgeX, 0);
-			region.setBlockState(current.set(x, y, cz-2), this.defaultEdgeX, 0);
+		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
+		if(isOnXAxis) {
+			/*if (isPositive) {
+				 if (x + centerPos.getX() == this.sphereRadius) {
+					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeXStart0, 0);
+					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeXStart0, 0);
+				} else  if (cx - x == -this.sphereRadius){
+					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeXStart1, 0);
+					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeXStart1, 0);
+				}
+			} else {
+				if (cz + z >= this.sphereRadius) {
+					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeZStart0, 0);
+					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeZStart0, 0);
+				} else if (cz - z == -this.sphereRadius){
+					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeZStart1, 0);
+					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeZStart1, 0);
+				}
+			}*/
+			region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeX, 0);
+			region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeX, 0);
+			region.setBlockState(current.set(x, y+1, cz+2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			region.setBlockState(current.set(x, y+1, cz-2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
 		} else {
 			region.setBlockState(current.set(cx+2, y, z), this.defaultEdgeZ, 0);
 			region.setBlockState(current.set(cx-2, y, z), this.defaultEdgeZ, 0);
+			region.setBlockState(current.set(cx+2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			region.setBlockState(current.set(cx-2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
 		}
-		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 2, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 3, z), Blocks.AIR.getDefaultState(), 0);
-
-
-	}
-
-	public void fillBridgeEdge(BlockPos pos, ChunkRegion region, BlockPos.Mutable current, boolean xa) {
-		int x = pos.getX();
-		int y = pos.getY();
-		int z = pos.getZ();
-		/*if (xa) {
-			region.setBlockState(current.set(x, y, z - 3), this.defaultEdge, 0);
-			region.setBlockState(current.set(x, y, z + 3), this.defaultEdge, 0);
-		} else {
-			region.setBlockState(current.set(x - 3, y, z), this.defaultEdge, 0);
-			region.setBlockState(current.set(x + 3, y, z), this.defaultEdge, 0);
-		}*/
 	}
 
 	@Override
