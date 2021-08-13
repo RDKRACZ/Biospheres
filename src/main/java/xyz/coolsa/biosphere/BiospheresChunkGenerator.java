@@ -4,12 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.state.property.Properties;
-import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.noise.OctavePerlinNoiseSampler;
-import net.minecraft.util.registry.Registry;
 import net.minecraft.world.ChunkRegion;
 import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.Heightmap;
@@ -45,12 +42,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final BlockState defaultFluid;
 	protected final BlockState defaultBridge;
 	protected final BlockState defaultEdge;
-	protected final BlockState defaultEdgeX;
-	protected final BlockState defaultEdgeXStart0;
-	protected final BlockState defaultEdgeXStart1;
-	protected final BlockState defaultEdgeZStart0;
-	protected final BlockState defaultEdgeZStart1;
-	protected final BlockState defaultEdgeZ;
+
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.CODEC.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
 					Codec.LONG.fieldOf("seed").forGetter((generator) -> generator.seed),
@@ -75,12 +67,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.defaultFluid = Blocks.WATER.getDefaultState();
 		this.defaultBridge = Blocks.OAK_PLANKS.getDefaultState();
 		this.defaultEdge = Blocks.OAK_FENCE.getDefaultState();
-		this.defaultEdgeX = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true).with(Properties.WEST, true);
-		this.defaultEdgeXStart0 = Blocks.OAK_FENCE.getDefaultState().with(Properties.EAST, true);
-		this.defaultEdgeXStart1 = Blocks.OAK_FENCE.getDefaultState().with(Properties.WEST, true);
-		this.defaultEdgeZStart0 = Blocks.OAK_FENCE.getDefaultState().with(Properties.SOUTH, true);
-		this.defaultEdgeZStart1 = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true);
-		this.defaultEdgeZ = Blocks.OAK_FENCE.getDefaultState().with(Properties.NORTH, true).with(Properties.SOUTH, true);
 		this.chunkRandom = new ChunkRandom(this.seed);
 		this.chunkRandom.skip(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
@@ -455,32 +441,19 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		region.setBlockState(current.set(x, y, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 1, z), Blocks.AIR.getDefaultState(), 0);
 		if(isOnXAxis) {
-			/*if (isPositive) {
-				 if (x + centerPos.getX() == this.sphereRadius) {
-					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeXStart0, 0);
-					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeXStart0, 0);
-				} else  if (cx - x == -this.sphereRadius){
-					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeXStart1, 0);
-					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeXStart1, 0);
-				}
-			} else {
-				if (cz + z >= this.sphereRadius) {
-					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeZStart0, 0);
-					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeZStart0, 0);
-				} else if (cz - z == -this.sphereRadius){
-					region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeZStart1, 0);
-					region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeZStart1, 0);
-				}
-			}*/
-			region.setBlockState(current.set(x, y, cz + 2), this.defaultEdgeX, 0);
-			region.setBlockState(current.set(x, y, cz - 2), this.defaultEdgeX, 0);
-			region.setBlockState(current.set(x, y+1, cz+2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
-			region.setBlockState(current.set(x, y+1, cz-2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			region.setBlockState(current.set(x, y, cz + 2), this.defaultEdge, 0);
+			region.getChunk(pos).markBlockForPostProcessing(current.set(x, y, cz+2));
+			region.setBlockState(current.set(x, y, cz - 2), this.defaultEdge, 0);
+			region.getChunk(pos).markBlockForPostProcessing(current.set(x, y, cz-2));
+			//region.setBlockState(current.set(x, y+1, cz+2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			//region.setBlockState(current.set(x, y+1, cz-2), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
 		} else {
-			region.setBlockState(current.set(cx+2, y, z), this.defaultEdgeZ, 0);
-			region.setBlockState(current.set(cx-2, y, z), this.defaultEdgeZ, 0);
-			region.setBlockState(current.set(cx+2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
-			region.setBlockState(current.set(cx-2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			region.setBlockState(current.set(cx+2, y, z), this.defaultEdge, 0);
+			region.getChunk(pos).markBlockForPostProcessing(current.set(cx+2, y, z));
+			region.setBlockState(current.set(cx-2, y, z), this.defaultEdge, 0);
+			region.getChunk(pos).markBlockForPostProcessing(current.set(cx-2, y, z));
+			//region.setBlockState(current.set(cx+2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
+			//region.setBlockState(current.set(cx-2, y+1, z), Blocks.OAK_LEAVES.getDefaultState().with(Properties.PERSISTENT, true), 0);
 		}
 		region.setBlockState(current.set(x, y + 2, z), Blocks.AIR.getDefaultState(), 0);
 		region.setBlockState(current.set(x, y + 3, z), Blocks.AIR.getDefaultState(), 0);
