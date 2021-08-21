@@ -12,19 +12,27 @@ import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.Heightmap.Type;
 import net.minecraft.world.biome.Biome;
+import net.minecraft.world.biome.GenerationSettings;
 import net.minecraft.world.biome.source.BiomeAccess;
+import net.minecraft.world.biome.source.BiomeCoords;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ProtoChunk;
+import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.gen.ChunkRandom;
 import net.minecraft.world.gen.GenerationStep;
 import net.minecraft.world.gen.StructureAccessor;
+import net.minecraft.world.gen.carver.CarverContext;
+import net.minecraft.world.gen.carver.ConfiguredCarver;
+import net.minecraft.world.gen.chunk.AquiferSampler;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.StructuresConfig;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
 
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 public class BiospheresChunkGenerator extends ChunkGenerator {
@@ -42,6 +50,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	protected final BlockState defaultFluid;
 	protected final BlockState defaultBridge;
 	protected final BlockState defaultEdge;
+	protected double generatedSphereHeight;
 
 	public static final Codec<BiospheresChunkGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance
 			.group(BiomeSource.CODEC.fieldOf("biome_source").forGetter((generator) -> generator.biomeSource),
@@ -70,6 +79,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		this.chunkRandom = new ChunkRandom(this.seed);
 		this.chunkRandom.skip(1000);
 		this.noiseSampler = new OctavePerlinNoiseSampler(this.chunkRandom, IntStream.rangeClosed(-3, 0));
+		this.generatedSphereHeight = this.sphereRadius;
+
 	}
 	
 	@Override
@@ -91,14 +102,15 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	@Override
 	public int getHeight(int x, int z, Type heightmap, HeightLimitView world) {
-		// TODO Auto-generated method stub
-		return 0;
+		return (int) this.generatedSphereHeight;
 	}
+
+	// TODO: Get structure gen working, probably need to make a new heightmap.
 
 	@Override
 	public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world) {
-		// TODO Auto-generated method stub
-		return null;
+		BlockState[] states = new BlockState[(int) this.generatedSphereHeight];
+		return new VerticalBlockSample(this.getHeight(x, z, Type.WORLD_SURFACE_WG, world), states);
 	}
 
 	@Override
@@ -138,6 +150,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 				double sphereHeight = Math.sqrt(this.sphereRadius * this.sphereRadius
 						- (centerPos.getX() - pos.getX()) * (centerPos.getX() - pos.getX())
 						- (pos.getZ() - centerPos.getZ()) * (pos.getZ() - centerPos.getZ()));
+				generatedSphereHeight = sphereHeight;
 				// now lets iterate over ever position inside of this sphere.
 				for (int y = centerPos.getY() - (int) sphereHeight; y <= sphereHeight + centerPos.getY(); y++) {
 					// calculate the radial distance for lake gen.
@@ -162,7 +175,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					if (((blockState.equals(this.defaultBlock) || blockState.equals(this.defaultNetherBlock))
 							&& (lakeDistance2d <= this.lakeRadius))	&& !fluidBlock.equals(Blocks.AIR.getDefaultState())) {
 						// if we are above the height and noise value, we will generate air.
-						if (y >= centerPos.getY() && !fluidBlock.equals(Blocks.STONE.getDefaultState())) {
+						if (y >= centerPos.getY() && (!fluidBlock.equals(Blocks.STONE.getDefaultState()) || !fluidBlock.equals(Blocks.NETHERRACK.getDefaultState()))) {
 							blockState = Blocks.AIR.getDefaultState();
 						}
 						// otherwise, we are inside of a valid position, so we go ahead and generate our
@@ -182,6 +195,10 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		}
 		return CompletableFuture.completedFuture(chunk);
 	}
+
+	/*@Override
+	public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {
+	}*/
 
 	public BlockPos getNearestCenterSphere(BlockPos pos) {
 		int xPos = pos.getX();
@@ -225,10 +242,6 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 	public ChunkGenerator withSeed(long seed) {
 		return new BiospheresChunkGenerator(this.biomeSource.withSeed(seed), seed, this.sphereRadius * 4,
 				this.sphereRadius, this.lakeRadius, this.shoreRadius);
-	}
-
-	@Override
-	public void carve(long seed, BiomeAccess access, Chunk chunk, GenerationStep.Carver carver) {
 	}
 
 	@Override
@@ -320,11 +333,12 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					double newRadialDistance = Math
 							.sqrt(centerPos.getSquaredDistance(pos.getX(), y, pos.getZ(), false));
 					double noiseTemp = (noise + y / centerPos.getY());
-					BlockState blockState = Blocks.AIR.getDefaultState();
+					BlockState blockState;
 					if (newRadialDistance <= this.sphereRadius - 1) {
 						continue;
 					}
 					if (y * noiseTemp >= centerPos.getY()) {
+					//if (true) {
 						if (region.getBiome(centerPos).getCategory() == Biome.Category.UNDERGROUND) {
 							blockState = Blocks.TINTED_GLASS.getDefaultState();
 						} else {
@@ -334,8 +348,8 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 						if (region.getBiome(chunkCenter).getCategory() == Biome.Category.NETHER) {
 							blockState = this.defaultNetherBlock;
 						} else {
-
-						}blockState = this.defaultBlock;
+							blockState = this.defaultBlock;
+						}
 					}
 					region.setBlockState(current.set(pos.getX(), y, pos.getZ()), blockState, 0);
 				}
