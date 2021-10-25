@@ -1,3 +1,4 @@
 {
-  "generator.biosphere" : "Biospheres"
+  "generator.biosphere": "Biospheres",
+  "generator.naturalbiosphere": "Alt Biospheres"
 }
