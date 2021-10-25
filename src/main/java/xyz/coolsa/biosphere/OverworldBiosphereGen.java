@@ -29,8 +29,8 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
     protected ChunkRandom chunkRandom;
     protected Supplier<ChunkGeneratorSettings> settings;
     protected int sphereDistance = 175;
-    protected int sphereRadiusMax = 75;
-    protected int sphereRadiusMin = 10;
+    protected double sphereRadiusMax = Biospheres.bsconfig.sphereRadius * 1.5625;
+    protected double sphereRadiusMin = Biospheres.bsconfig.sphereRadius / 4.8;
     protected long seed;
 	protected int oreSphereRadius;
 	protected int lakeRadius;
@@ -51,13 +51,13 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
         return OverworldBiosphereGen.CODEC;
     }
 
-    private int getSphereRadius(int centerX, int centerY){
+    private double getSphereRadius(int centerX, int centerY){
         if(centerX == 0 && centerY == 0){
             return sphereRadiusMax;
         }
         // make random sized spheres
         this.chunkRandom.setTerrainSeed(centerX, centerY);
-        return this.chunkRandom.nextInt(sphereRadiusMax - sphereRadiusMin) + sphereRadiusMin;
+        return this.chunkRandom.nextInt((int) (sphereRadiusMax - sphereRadiusMin)) + sphereRadiusMin;
     }
 
     @Override
@@ -126,7 +126,7 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
         BlockPos.Mutable pos = new BlockPos.Mutable();
 
         // make random sized spheres
-        int sphereRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
+        double sphereRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
 
         for(int y = getMinimumY(); y < getWorldHeight() - getMinimumY(); y++){
             // we set our current position to the current column.
@@ -162,7 +162,7 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
             BlockPos[] nesw = getClosestSpheres(centerPos);
             double radialDistance = Math.sqrt(centerPos.getSquaredDistance(pos.getX(), centerPos.getY(), pos.getZ(), false));
             
-            int centerRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
+            double centerRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
             for (int i = 0; i < 4; i++) {
                 if (radialDistance > centerRadius - 2) {
                     // slope = (y-y1)/(x-x1)
@@ -170,7 +170,7 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
                     double slope = nesw[i].getY() - centerPos.getY();
                     double var = 0;
 
-                    int neighborRadius = getSphereRadius(nesw[i].getX(), nesw[i].getZ());
+                    double neighborRadius = getSphereRadius(nesw[i].getX(), nesw[i].getZ());
 
                     switch (i) {
                         case (0):
@@ -276,7 +276,7 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
         BlockPos centerPos = this.getNearestCenterSphere(chunkCenter);
 
         // make random sized spheres
-        int sphereRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
+        double sphereRadius = getSphereRadius(centerPos.getX(), centerPos.getZ());
         
         // now lets iterate over every every column in the chunk.
 		for (final BlockPos pos : BlockPos.iterate(chunkCenter.getX() - 7, 0, chunkCenter.getZ() - 7, chunkCenter.getX() + 8, 0, chunkCenter.getZ() + 8)) {
@@ -381,14 +381,14 @@ public class OverworldBiosphereGen extends NoiseChunkGenerator {
         int centerY = getSeaLevel();
 		this.chunkRandom.setTerrainSeed(centerX, centerZ);
         
-        int sphereRadius = getSphereRadius(centerX, centerZ);
+        double sphereRadius = getSphereRadius(centerX, centerZ);
 
         // Resolve Y level if not at 0,0. 0,0 must guarantee a place to spawn...
         if(centerX != 0 || centerY != 0){
-            int upperbound = getWorldHeight() - sphereRadius; // 208
-            int lowerbound = getMinimumY();// + sphereRadius;    // 0
-            int sealevel = (upperbound - lowerbound) / 2; //getSeaLevel();                          // 63
-            int range;
+            double upperbound = getWorldHeight() * 3.0 / 4.0 - sphereRadius; // 208
+            double lowerbound = getMinimumY() + sphereRadius;    // 0
+            double sealevel = (upperbound - lowerbound) / 2; //getSeaLevel();                          // 63
+            double range;
 
             if(sealevel - lowerbound > upperbound - sealevel){
                 // top to sea level is shorter, so that is our range

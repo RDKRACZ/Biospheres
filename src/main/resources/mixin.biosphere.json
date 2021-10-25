@@ -4,7 +4,9 @@
   "package": "xyz.coolsa.biosphere.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "GeneratorTypeMixin"
+    "GeneratorTypeMixin",
+    "AbstractPiglinEntityMixin",
+    "HoglinEntityMixin"
   ],
   "client": [
 

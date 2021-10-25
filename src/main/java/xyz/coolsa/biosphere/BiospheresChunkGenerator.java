@@ -112,7 +112,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		BlockState[] states = new BlockState[(int) this.generatedSphereHeight];
 		return new VerticalBlockSample(this.getHeight(x, z, Type.WORLD_SURFACE_WG, world), states);
 	}
-
+	Heightmap BiosphereHeightmap;
 	@Override
 	public CompletableFuture<Chunk> populateNoise(Executor world, StructureAccessor accessor, Chunk chunk) {
 		// get the starting position of the chunk we will generate.
@@ -230,8 +230,9 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 		} else {
 			state = Blocks.STONE.getDefaultState();
 		}
-		if (rng >= 1 && rng <= 8)
-			state = this.defaultFluid;
+		if (rng >= 2 && rng <= 8)
+			if (biome.getCategory() == Biome.Category.NETHER) state = Blocks.LAVA.getDefaultState();
+			else state = this.defaultFluid;
 		else if (rng == 9) {
 			state = Blocks.LAVA.getDefaultState();
 		}
@@ -334,6 +335,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							.sqrt(centerPos.getSquaredDistance(pos.getX(), y, pos.getZ(), false));
 					double noiseTemp = (noise + y / centerPos.getY());
 					BlockState blockState;
+					//ChunkScanner scanner = new ChunkScanner(region.getChunk(chunkCenter));
 					if (newRadialDistance <= this.sphereRadius - 1) {
 						continue;
 					}
@@ -341,11 +343,14 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 					//if (true) {
 						if (region.getBiome(centerPos).getCategory() == Biome.Category.UNDERGROUND) {
 							blockState = Blocks.TINTED_GLASS.getDefaultState();
+						} else if (region.getBiome(centerPos).getCategory() == Biome.Category.NETHER) {
+							blockState = Blocks.RED_STAINED_GLASS.getDefaultState();
 						} else {
 							blockState = Blocks.GLASS.getDefaultState();
 						}
 					} else {
 						if (region.getBiome(chunkCenter).getCategory() == Biome.Category.NETHER) {
+						//if (scanner.scanForBiomeCategory(region, Biome.Category.NETHER)) {
 							blockState = this.defaultNetherBlock;
 						} else {
 							blockState = this.defaultBlock;
