@@ -1,6 +1,8 @@
 # Biospheres (Fabric)
 
-![Image](https://media.discordapp.net/attachments/720484491390615613/725637966881620019/unknown.png)
+### with Biospheres generator
+![Image](https://cdn.discordapp.com/attachments/507982666755473427/875757544432357466/2021-08-13_11.05.39.png)
+### with Alt Biospheres generator
 ![Image](https://i.imgur.com/KmHU2za.png)
 
 ## Setup
