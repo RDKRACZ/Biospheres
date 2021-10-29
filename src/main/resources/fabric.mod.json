@@ -25,6 +25,9 @@
   "entrypoints": {
     "main": [
       "xyz.coolsa.biosphere.Biospheres"
+    ],
+    "client": [
+      "xyz.coolsa.biosphere.BiospheresClient"
     ]
   },
 

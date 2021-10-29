@@ -18,6 +18,6 @@ public class AbstractPiglinEntityMixin extends HostileEntity {
 
     @Redirect(method = "shouldZombify", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/dimension/DimensionType;isPiglinSafe()Z"))
     private boolean biomeZombify(DimensionType dimensionType) {
-        return this.getEntityWorld().getBiome(this.getBlockPos()).getCategory() == Biome.Category.NETHER;
+        return this.getEntityWorld().getBiome(this.getBlockPos()).getCategory() == Biome.Category.NETHER || dimensionType.isPiglinSafe();
     }
 }

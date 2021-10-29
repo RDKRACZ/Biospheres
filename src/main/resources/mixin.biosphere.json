@@ -4,12 +4,18 @@
   "package": "xyz.coolsa.biosphere.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "GeneratorTypeMixin",
     "AbstractPiglinEntityMixin",
-    "HoglinEntityMixin"
+    "BedBlockMixin",
+    "BucketItemMixin",
+    "HoglinEntityMixin",
+    "RespawnAnchorBlockMixin",
+    "WetSpongeBlockMixin"
   ],
   "client": [
-
+    "GeneratorTypeMixin"
+  ],
+  "server": [
+    "GeneratorOptionsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

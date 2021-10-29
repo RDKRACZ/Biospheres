@@ -84,7 +84,7 @@ public class BiospheresBiomeSource extends BiomeSource {
 ////					.map(DataResult::success).orElseGet(() -> DataResult.error("Unknown preset: " + identifier)),
 //BuiltinRegistries.BIOME.get(BuiltinBiomesreset -> DataResult.success(preset.id)).fieldOf("preset"), Codec.LONG.fieldOf("seed")).stable();
 //
-	protected BiospheresBiomeSource(Registry<Biome> registry, long seed) {
+public BiospheresBiomeSource(Registry<Biome> registry, long seed) {
 		super(ImmutableList.of());
 		this.seed = seed;
 		this.sphereDistance = Biospheres.bsconfig.sphereRadius * 4;
