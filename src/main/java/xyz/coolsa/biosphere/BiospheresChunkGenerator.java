@@ -67,7 +67,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 
 	public BiospheresChunkGenerator(BiomeSource biomeSource, long seed, int sphereDistance, int sphereRadius,
 			int lakeRadius, int shoreRadius) {
-		super(biomeSource, new StructuresConfig(Optional.of(StructuresConfig.DEFAULT_STRONGHOLD), Maps.newHashMap(ImmutableMap.of(StructureFeature.MINESHAFT, StructuresConfig.DEFAULT_STRUCTURES.get(StructureFeature.MINESHAFT)))));
+		super(biomeSource, new StructuresConfig(Optional.of(StructuresConfig.DEFAULT_STRONGHOLD), Collections.emptyMap()));
 		this.biomeSource = biomeSource;
 		this.seed = seed;
 		this.sphereDistance = sphereRadius * 4;
@@ -359,7 +359,7 @@ public class BiospheresChunkGenerator extends ChunkGenerator {
 							blockState = Blocks.GLASS.getDefaultState();
 						}
 					} else {
-						if (region.getBiome(chunkCenter).getCategory() == Biome.Category.NETHER) {
+						if (region.getBiome(centerPos).getCategory() == Biome.Category.NETHER) {
 							blockState = this.defaultNetherBlock;
 						} else {
 							blockState = this.defaultBlock;
